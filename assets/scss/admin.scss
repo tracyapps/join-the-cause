@@ -1,0 +1,253 @@
+@use 'variables' as *;
+@use 'mixins' as *;
+
+// ─── Admin: Settings pages ────────────────────────────────────────────────────
+
+.jtc-settings-wrap,
+.jtc-supporters-wrap,
+.jtc-newsletter-wrap {
+  max-width: 900px;
+
+  h1 {
+    border-bottom: 1px solid $jtc-border;
+    padding-bottom: 12px;
+    margin-bottom: 0;
+  }
+
+  .nav-tab-wrapper {
+    margin-bottom: 0;
+    border-bottom: 1px solid #ccc;
+  }
+
+  .jtc-tab-content {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-top: none;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+}
+
+// ─── Colour preset swatches ───────────────────────────────────────────────────
+
+.jtc-preset-swatches {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.jtc-swatch-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin: 0 12px 10px 0;
+
+  input[type='radio'] {
+    @include visually-hidden;
+
+    &:checked + .jtc-swatch {
+      outline: 3px solid #333;
+      outline-offset: 3px;
+    }
+
+    &:focus-visible + .jtc-swatch {
+      box-shadow: 0 0 0 4px rgba(0, 0, 0, .3);
+    }
+  }
+}
+
+.jtc-swatch {
+  display: block;
+  width: 44px;
+  height: 32px;
+  border-radius: 8px;
+  border: 2px solid rgba(0, 0, 0, .15);
+  transition: transform .15s ease;
+
+  &:hover {
+    transform: scale(1.15);
+  }
+}
+
+.jtc-swatch-name {
+  font-weight: 600;
+}
+
+// ─── Colour picker rows ───────────────────────────────────────────────────────
+
+.jtc-color-pickers {
+  display: grid;
+  gap: 16px;
+  max-width: 460px;
+}
+
+.jtc-color-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  label {
+    min-width: 140px;
+    font-weight: 500;
+  }
+}
+
+// ─── CPT list-table column styles ────────────────────────────────────────────
+
+.post-type-jtc_petition {
+  .column-jtc_thumb {
+    width: 60px;
+
+    img {
+      width: 50px;
+      height: 50px;
+      object-fit: cover;
+      border-radius: 4px;
+    }
+  }
+
+  .column-jtc_shortcode {
+    width: 260px;
+  }
+
+  .column-jtc_count {
+    width: 90px;
+    text-align: center;
+  }
+}
+
+.jtc-shortcode {
+  display: inline-block;
+  padding: 3px 7px;
+  background: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: all;
+  transition: background .15s;
+
+  &:hover,
+  &:focus {
+    background: #e0e0e0;
+    outline: 2px solid #0073aa;
+  }
+
+  &--copied {
+    background: #d4edda;
+    border-color: #28a745;
+  }
+}
+
+// ─── Form field builder ───────────────────────────────────────────────────────
+
+.jtc-built-in-fields {
+  opacity: .6;
+}
+
+#jtc-fields-table {
+  .jtc-drag-handle {
+    cursor: grab;
+    color: #aaa;
+    font-size: 20px;
+    width: 28px;
+    text-align: center;
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
+}
+
+.jtc-field-row {
+  &.ui-sortable-helper {
+    background: #f5f5f5;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .12);
+  }
+
+  td {
+    vertical-align: middle;
+    padding: 8px 6px;
+  }
+}
+
+.jtc-remove-field {
+  color: #c0392b;
+  font-size: 16px;
+
+  &:hover,
+  &:focus {
+    color: #922b21;
+  }
+}
+
+// ─── Petition settings meta box ───────────────────────────────────────────────
+
+.jtc-settings-table {
+  td, th {
+    padding: 8px 0;
+    vertical-align: top;
+  }
+}
+
+// ─── Supporters page ──────────────────────────────────────────────────────────
+
+.jtc-tablenav {
+  margin-bottom: 12px;
+
+  input[type='search'] {
+    margin-left: 8px;
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+}
+
+.jtc-delete-link {
+  color: #c0392b;
+
+  &:hover,
+  &:focus {
+    color: #922b21;
+  }
+}
+
+// ─── Newsletter compose ───────────────────────────────────────────────────────
+
+.jtc-nl-compose {
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 24px;
+  margin-bottom: 32px;
+
+  h2 {
+    margin-top: 0;
+  }
+}
+
+.jtc-nl-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.jtc-nl-archive {
+  h2 { margin-top: 0; }
+}
+
+.jtc-status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+
+  &--draft { background: #fef3cd; color: #856404; }
+  &--sent  { background: #d4edda; color: #155724; }
+}

@@ -1,0 +1,576 @@
+@use 'variables' as *;
+@use 'mixins' as *;
+
+// ─── Petition wrapper ─────────────────────────────────────────────────────────
+
+.jtc-petition {
+  --jtc-local-text: var(--jtc-text, inherit);
+  --jtc-local-strong: var(--jtc-text-strong, currentColor);
+  --jtc-local-muted: var(--jtc-text-muted, color-mix(in srgb, currentColor 68%, transparent));
+
+  font-family: $jtc-font-base;
+  font-size: $jtc-font-size;
+  line-height: $jtc-line-height;
+  color: var(--jtc-local-text);
+  position: relative;
+  background: $jtc-page-bg;
+  border-radius: $jtc-radius-lg;
+  padding: clamp(18px, 3vw, 32px);
+}
+
+.jtc-petition *,
+.jtc-petition *::before,
+.jtc-petition *::after {
+  box-sizing: border-box;
+}
+
+// ─── Header / hero ────────────────────────────────────────────────────────────
+
+.jtc-petition__header {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 42%);
+  gap: clamp(18px, 3vw, 34px);
+  align-items: center;
+  margin: 0 0 32px;
+  padding: clamp(28px, 5vw, 58px);
+  overflow: hidden;
+  border-radius: $jtc-radius-lg;
+  color: var(--jtc-hero-text, #ffffff);
+  background:
+    radial-gradient(circle at 8% 18%, rgba(255, 255, 255, .22), transparent 28%),
+    linear-gradient(135deg, $jtc-hero-from 0%, $jtc-primary 52%, $jtc-hero-to 100%);
+  box-shadow: $jtc-shadow-lg;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: auto -10% -45% 34%;
+    height: 70%;
+    background: rgba(255, 255, 255, .14);
+    transform: rotate(-8deg);
+    border-radius: 999px;
+    pointer-events: none;
+  }
+
+  @include jtc-mobile {
+    grid-template-columns: 1fr;
+    padding: 28px 20px;
+  }
+}
+
+.jtc-petition.no-featured-image .jtc-petition__header {
+  grid-template-columns: 1fr;
+}
+
+.jtc-petition__intro {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.jtc-petition__title {
+  font-size: clamp(2.25rem, 6vw, 4.5rem);
+  font-weight: 800;
+  line-height: .98;
+  margin: 0;
+  color: inherit;
+  max-width: 11ch;
+}
+
+.jtc-petition__dek {
+  max-width: 56ch;
+  margin: 18px 0 0;
+  font-size: clamp(1rem, 1.8vw, 1.18rem);
+  line-height: 1.55;
+  color: color-mix(in srgb, currentColor 88%, transparent);
+}
+
+.jtc-petition__hero {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  border-radius: $jtc-radius-lg;
+  overflow: hidden;
+  min-height: 260px;
+  aspect-ratio: 4 / 3;
+  background: rgba(255, 255, 255, .18);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .2);
+
+  img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+  }
+
+  @include jtc-mobile {
+    min-height: 220px;
+  }
+}
+
+// ─── Two-column body ──────────────────────────────────────────────────────────
+//
+// No align-items override → both columns default to "stretch", which means
+// .jtc-sign-panel-col grows to match the (usually taller) content column.
+// That gives position:sticky on .jtc-sign-panel its full scroll runway.
+
+.jtc-petition__body {
+  display: grid;
+  grid-template-columns: 1fr $jtc-panel-width;
+  gap: $jtc-gap;
+
+  @include jtc-mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ─── Content (left) ───────────────────────────────────────────────────────────
+
+.jtc-petition__content {
+  min-width: 0; // prevent overflow in grid
+  align-self: start; // content doesn't need to stretch — only the panel col does
+  background: $jtc-bg;
+  border: 1px solid $jtc-border;
+  border-radius: $jtc-radius-lg;
+  padding: clamp(22px, 4vw, 42px);
+  box-shadow: $jtc-shadow-sm;
+}
+
+.jtc-petition__text {
+  margin-bottom: 32px;
+  color: $jtc-text;
+
+  p, li { margin-bottom: .75em; }
+  img   { max-width: 100%; height: auto; border-radius: $jtc-radius; }
+  h2, h3 {
+    margin-top: 1.5em;
+    color: $jtc-text-strong;
+  }
+}
+
+// ─── Recent signers ───────────────────────────────────────────────────────────
+
+.jtc-recent-signers {
+  margin-bottom: 32px;
+  padding: 20px;
+  background: $jtc-bg-alt;
+  border-radius: $jtc-radius-lg;
+  border-left: 4px solid $jtc-primary;
+}
+
+.jtc-recent-signers__heading {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: $jtc-primary;
+}
+
+.jtc-recent-signers__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.jtc-recent-signers__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .9rem;
+
+  &::before {
+    content: '✓';
+    color: $jtc-primary;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+}
+
+.jtc-recent-signers__name {
+  font-weight: 600;
+}
+
+.jtc-recent-signers__time {
+  color: $jtc-text-muted;
+  font-size: .85rem;
+}
+
+// ─── Share buttons ────────────────────────────────────────────────────────────
+
+.jtc-share {
+  margin-bottom: 32px;
+}
+
+.jtc-share__heading {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 12px;
+}
+
+.jtc-share__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.jtc-share__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: $jtc-radius;
+  text-decoration: none;
+  font-size: .875rem;
+  font-weight: 600;
+  border: 2px solid $jtc-border;
+  color: $jtc-text-strong;
+  background: $jtc-bg;
+  transition: border-color .15s, background .15s, color .15s;
+  cursor: pointer;
+
+  &:focus-visible { @include jtc-focus; }
+
+  &:hover {
+    border-color: $jtc-primary;
+    color: $jtc-primary;
+  }
+
+  &--facebook:hover {
+    background: #1877f2;
+    border-color: #1877f2;
+    color: #fff;
+  }
+
+  &--twitter:hover {
+    background: #000;
+    border-color: #000;
+    color: #fff;
+  }
+}
+
+// ─── Sign panel column wrapper (right) ───────────────────────────────────────
+//
+// This wrapper stretches to the full grid-row height by default (grid stretch
+// alignment), giving .jtc-sign-panel its sticky scroll runway. Without this
+// wrapper the panel column would only be as tall as the panel itself, causing
+// sticky to stop working almost immediately.
+
+.jtc-sign-panel-col {
+  // Stretches by default — no extra rules needed on desktop.
+  // On mobile it becomes a regular block in the single-column stack.
+
+  @include jtc-mobile {
+    order: -1; // Show above text content on mobile.
+  }
+}
+
+// ─── Sign panel (right / sticky) ─────────────────────────────────────────────
+
+.jtc-sign-panel {
+  @include jtc-card;
+  position: sticky;
+  top: 20px;     // sticks 20px from viewport top on desktop
+  z-index: 100;
+  // width is auto — fills the 380px grid column set on .jtc-petition__body
+
+  // Offset for the WP admin bar when logged in.
+  .admin-bar & {
+    top: calc(20px + 32px); // 32px = WP admin bar desktop height
+  }
+
+  @include jtc-mobile {
+    position: relative;
+    top: auto;
+    margin-bottom: 28px;
+
+    .admin-bar & {
+      top: auto;
+    }
+  }
+}
+
+// Admin bar is taller on small screens.
+@media screen and (max-width: 782px) {
+  .admin-bar .jtc-sign-panel {
+    top: calc(20px + 46px); // 46px = WP admin bar mobile height
+  }
+}
+
+// ─── Signature count ──────────────────────────────────────────────────────────
+
+.jtc-count {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid $jtc-border;
+  text-align: center;
+}
+
+.jtc-count__number {
+  display: block;
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: $jtc-primary;
+  line-height: 1;
+}
+
+.jtc-count__label {
+  display: block;
+  font-size: .95rem;
+  color: $jtc-text-muted;
+  margin-top: 4px;
+}
+
+.jtc-count__goal {
+  font-size: .85rem;
+  color: $jtc-text-muted;
+  margin-top: 8px;
+}
+
+// ─── Progress bar ─────────────────────────────────────────────────────────────
+
+.jtc-progress {
+  height: 8px;
+  background: $jtc-bg-alt;
+  border: 1px solid $jtc-border;
+  border-radius: 99px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+.jtc-progress__bar {
+  height: 100%;
+  background: $jtc-primary;
+  border-radius: 99px;
+  transition: width .4s ease;
+  min-width: 2px;
+}
+
+// ─── Form ─────────────────────────────────────────────────────────────────────
+
+.jtc-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.jtc-form__heading {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: $jtc-text;
+}
+
+// ─── Field ────────────────────────────────────────────────────────────────────
+
+.jtc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.jtc-field__label {
+  font-size: .875rem;
+  font-weight: 600;
+  color: $jtc-text;
+}
+
+.jtc-required {
+  color: $jtc-error-color;
+  margin-left: 2px;
+}
+
+.jtc-field__input,
+.jtc-field__textarea,
+.jtc-field__select {
+  width: 100%;
+  padding: 9px 12px;
+  border: 2px solid $jtc-border;
+  border-radius: $jtc-radius;
+  font-size: $jtc-font-size;
+  font-family: $jtc-font-base;
+  color: $jtc-text;
+  background: $jtc-input-bg;
+  transition: border-color .15s, box-shadow .15s;
+  appearance: none;
+  box-sizing: border-box;
+
+  &::placeholder {
+    color: color-mix(in srgb, $jtc-text-muted 72%, transparent);
+  }
+
+  &:focus {
+    border-color: $jtc-primary;
+    @include jtc-focus;
+  }
+
+  &[aria-invalid='true'] {
+    border-color: $jtc-error-color;
+    box-shadow: 0 0 0 3px rgba(192, 57, 43, .2);
+  }
+}
+
+.jtc-field__textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.jtc-field__checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: .875rem;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.jtc-field__checkbox {
+  margin-top: 2px;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: $jtc-primary;
+
+  &:focus-visible { @include jtc-focus; }
+}
+
+.jtc-field__error {
+  font-size: .8rem;
+  color: $jtc-error-color;
+  font-weight: 500;
+}
+
+// ─── Privacy / terms ─────────────────────────────────────────────────────────
+
+.jtc-form__privacy,
+.jtc-form__terms {
+  font-size: .8rem;
+  color: $jtc-text-muted;
+  margin: 0;
+  line-height: 1.5;
+}
+
+// ─── Status / error banner ────────────────────────────────────────────────────
+
+.jtc-form__status {
+  border-radius: $jtc-radius;
+  padding: 0;
+  font-size: .9rem;
+
+  &.jtc-status--error {
+    padding: 10px 14px;
+    background: #fdedec;
+    border: 1px solid #fadbd8;
+    color: $jtc-error-color;
+  }
+
+  &.jtc-status--success {
+    padding: 10px 14px;
+    background: #eafaf1;
+    border: 1px solid #d4edda;
+    color: $jtc-success-color;
+  }
+}
+
+// ─── Submit button ────────────────────────────────────────────────────────────
+
+.jtc-form__submit {
+  display: block;
+  width: 100%;
+  padding: 13px 20px;
+  background: $jtc-primary;
+  color: $jtc-button-text;
+  border: none;
+  border-radius: $jtc-radius;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: $jtc-font-base;
+  cursor: pointer;
+  transition: background .2s, transform .1s;
+  text-align: center;
+
+  &:hover {
+    background: $jtc-primary-dark;
+  }
+
+  &:active {
+    transform: scale(.98);
+  }
+
+  &:focus-visible {
+    @include jtc-focus;
+    outline-color: $jtc-primary-dark;
+  }
+
+  &:disabled {
+    opacity: .65;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+
+// ─── Success state ────────────────────────────────────────────────────────────
+
+.jtc-success {
+  padding: 20px;
+  background: $jtc-primary-light;
+  border: 2px solid $jtc-primary;
+  border-radius: $jtc-radius-lg;
+  color: $jtc-primary-dark;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.5;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+// ─── Mobile sticky CTA ────────────────────────────────────────────────────────
+
+.jtc-mobile-cta {
+  display: none;
+
+  @include jtc-mobile {
+    display: block;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 999;
+    padding: 12px 16px;
+    background: $jtc-bg;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, .12);
+    border-top: 1px solid $jtc-border;
+
+    &[aria-hidden='true'] {
+      display: none;
+    }
+  }
+}
+
+.jtc-mobile-cta__button {
+  display: block;
+  width: 100%;
+  padding: 14px 20px;
+  background: $jtc-primary;
+  color: $jtc-button-text;
+  border: none;
+  border-radius: $jtc-radius;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: $jtc-font-base;
+  cursor: pointer;
+  text-align: center;
+
+  &:focus-visible { @include jtc-focus; }
+}
+
+.jtc-mobile-cta__count {
+  font-weight: 400;
+  font-size: .85em;
+  opacity: .85;
+}

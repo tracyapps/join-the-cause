@@ -1,0 +1,46 @@
+// ─── CSS custom properties (set at runtime by PHP via jtc_output_css_vars) ──
+// These SCSS vars are fallbacks for the compiled CSS only;
+// at runtime, the PHP-injected :root { --jtc-* } values take over.
+
+$jtc-primary:       var(--jtc-primary,       #2d6a2d);
+$jtc-primary-dark:  var(--jtc-primary-dark,  #1a3d1a);
+$jtc-primary-light: var(--jtc-primary-light, #f0faf0);
+$jtc-primary-rgb:   var(--jtc-primary-rgb, 45, 106, 45);
+$jtc-hero-from:     var(--jtc-hero-from, #245e2b);
+$jtc-hero-to:       var(--jtc-hero-to, #4f8d33);
+$jtc-button-text:   var(--jtc-button-text, #ffffff);
+
+// Neutrals
+$jtc-text:          var(--jtc-text, inherit);
+$jtc-text-strong:   var(--jtc-text-strong, var(--jtc-text, #1a1a1a));
+$jtc-text-muted:    var(--jtc-text-muted, #555);
+$jtc-border:        var(--jtc-border, #d8d8d8);
+$jtc-bg:            var(--jtc-surface, #ffffff);
+$jtc-bg-alt:        var(--jtc-surface-alt, #f7f7f7);
+$jtc-page-bg:       var(--jtc-page-bg, transparent);
+$jtc-input-bg:      var(--jtc-input-bg, var(--jtc-surface, #ffffff));
+$jtc-error-color:   #c0392b;
+$jtc-success-color: #1e7e34;
+
+// Layout
+$jtc-panel-width:   380px;
+$jtc-gap:           32px;
+$jtc-radius:        8px;
+$jtc-radius-lg:     12px;
+
+// Shadow
+$jtc-shadow-sm:  0 1px 3px rgba(15, 23, 42, .08);
+$jtc-shadow-md:  0 10px 30px rgba(15, 23, 42, .12);
+$jtc-shadow-lg:  0 22px 55px rgba(15, 23, 42, .18);
+
+// Typography
+$jtc-font-base:  -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+$jtc-font-size:  16px;
+$jtc-line-height: 1.6;
+
+// Breakpoints
+$jtc-bp-mobile:  768px;
+$jtc-bp-tablet:  1024px;
+
+// Focus ring (WCAG 2.1 AA)
+$jtc-focus-ring: 0 0 0 3px var(--jtc-primary, #2d6a2d);

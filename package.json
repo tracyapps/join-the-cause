@@ -1,0 +1,14 @@
+{
+  "name": "join-the-cause",
+  "version": "0.1.0",
+  "description": "Build tooling for Join the Cause WordPress plugin",
+  "private": true,
+  "scripts": {
+    "build": "sass assets/scss/admin.scss assets/css/admin.css --style=compressed --no-source-map && sass assets/scss/public.scss assets/css/public.css --style=compressed --no-source-map",
+    "watch": "sass --watch assets/scss/admin.scss:assets/css/admin.css assets/scss/public.scss:assets/css/public.css",
+    "build:dev": "sass assets/scss/admin.scss assets/css/admin.css --style=expanded --source-map && sass assets/scss/public.scss assets/css/public.css --style=expanded --source-map"
+  },
+  "devDependencies": {
+    "sass": "^1.77.0"
+  }
+}

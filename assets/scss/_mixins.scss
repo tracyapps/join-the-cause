@@ -1,0 +1,50 @@
+// ─── Mixins ───────────────────────────────────────────────────────────────────
+
+@use 'variables' as *;
+
+@mixin jtc-focus {
+  outline: none;
+  box-shadow: $jtc-focus-ring;
+  border-radius: $jtc-radius;
+}
+
+@mixin jtc-button-reset {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+@mixin jtc-card {
+  background: $jtc-bg;
+  border-radius: $jtc-radius-lg;
+  box-shadow: $jtc-shadow-md;
+  border: 1px solid $jtc-border;
+  padding: 28px;
+}
+
+@mixin jtc-mobile {
+  @media (max-width: #{$jtc-bp-mobile}) {
+    @content;
+  }
+}
+
+@mixin jtc-tablet {
+  @media (max-width: #{$jtc-bp-tablet}) {
+    @content;
+  }
+}
+
+@mixin visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
