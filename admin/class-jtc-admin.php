@@ -134,7 +134,8 @@ class JTC_Admin {
 	// ─── Settings save ────────────────────────────────────────────────────────
 
 	public function handle_settings_save(): void {
-		if ( ! isset( $_POST['jtc_settings_submit'] ) ) return;
+		$is_test_email = isset( $_POST['jtc_email_test_submit'] );
+		if ( ! isset( $_POST['jtc_settings_submit'] ) && ! $is_test_email ) return;
 
 		check_admin_referer( 'jtc_save_settings', 'jtc_settings_nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) wp_die( __( 'Not allowed.', 'join-the-cause' ) );
@@ -156,7 +157,13 @@ class JTC_Admin {
 				break;
 		}
 
-		wp_redirect( add_query_arg( [ 'page' => 'join-the-cause', 'tab' => $tab, 'saved' => '1' ], admin_url( 'admin.php' ) ) );
+		$args = [ 'page' => 'join-the-cause', 'tab' => $tab, 'saved' => '1' ];
+
+		if ( $is_test_email && 'email' === $tab ) {
+			$args['email_test'] = $this->send_test_email() ? 'sent' : 'failed';
+		}
+
+		wp_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) );
 		exit;
 	}
 
@@ -229,10 +236,20 @@ class JTC_Admin {
 		}
 
 		// API.
-		update_option( 'jtc_api_provider', sanitize_key( $_POST['jtc_api_provider'] ?? 'sendgrid' ) );
+		$api_provider = in_array( $_POST['jtc_api_provider'] ?? '', [ 'sendgrid', 'mailgun' ], true )
+			? sanitize_key( $_POST['jtc_api_provider'] )
+			: 'mailgun';
+		update_option( 'jtc_api_provider', $api_provider );
 		if ( ! empty( $_POST['jtc_api_key'] ) ) {
 			update_option( 'jtc_api_key', sanitize_text_field( wp_unslash( $_POST['jtc_api_key'] ) ) );
 		}
+		update_option( 'jtc_mailgun_domain', $this->sanitize_mailgun_domain( wp_unslash( $_POST['jtc_mailgun_domain'] ?? '' ) ) );
+		update_option(
+			'jtc_mailgun_region',
+			in_array( $_POST['jtc_mailgun_region'] ?? '', [ 'us', 'eu' ], true )
+				? sanitize_key( $_POST['jtc_mailgun_region'] )
+				: 'us'
+		);
 
 		// Transactional emails.
 		update_option( 'jtc_welcome_email_enabled',  ! empty( $_POST['jtc_welcome_email_enabled'] ) ? 1 : 0 );
@@ -240,6 +257,48 @@ class JTC_Admin {
 		update_option( 'jtc_welcome_email_body',     sanitize_textarea_field( wp_unslash( $_POST['jtc_welcome_email_body'] ?? '' ) ) );
 		update_option( 'jtc_admin_notify_enabled',   ! empty( $_POST['jtc_admin_notify_enabled'] ) ? 1 : 0 );
 		update_option( 'jtc_admin_notify_email',     sanitize_email( wp_unslash( $_POST['jtc_admin_notify_email'] ?? '' ) ) );
+	}
+
+	private function sanitize_mailgun_domain( string $domain ): string {
+		$domain = trim( strtolower( $domain ) );
+		$domain = preg_replace( '#^https?://#', '', $domain );
+		$domain = strtok( (string) $domain, '/:' );
+
+		return sanitize_text_field( (string) $domain );
+	}
+
+	private function send_test_email(): bool {
+		$user       = wp_get_current_user();
+		$to         = is_email( $user->user_email ) ? $user->user_email : get_option( 'admin_email' );
+		$mailer     = new JTC_Mailer();
+		$sent       = $mailer->send(
+			$to,
+			__( '[Join the Cause] Email test', 'join-the-cause' ),
+			sprintf(
+				/* translators: %s site name */
+				__( "This is a test email from Join the Cause on %s.\n\nIf you received it, your email settings are working.", 'join-the-cause' ),
+				get_bloginfo( 'name' )
+			)
+		);
+		$message    = $sent
+			? sprintf(
+				/* translators: %s recipient email */
+				__( 'Test email sent to %s.', 'join-the-cause' ),
+				$to
+			)
+			: sprintf(
+				/* translators: %s mailer error */
+				__( 'Test email failed. %s', 'join-the-cause' ),
+				$mailer->get_last_error() ?: __( 'No additional error was returned.', 'join-the-cause' )
+			);
+		$transient  = 'jtc_email_test_result_' . get_current_user_id();
+
+		set_transient( $transient, [
+			'success' => $sent,
+			'message' => $message,
+		], MINUTE_IN_SECONDS );
+
+		return $sent;
 	}
 
 	// ─── Newsletter actions ────────────────────────────────────────────────────
@@ -380,6 +439,20 @@ class JTC_Admin {
 					(int) $_GET['sent']
 				)
 			);
+		}
+
+		if ( isset( $_GET['email_test'] ) ) {
+			$transient = 'jtc_email_test_result_' . get_current_user_id();
+			$result    = get_transient( $transient );
+			delete_transient( $transient );
+
+			if ( is_array( $result ) && ! empty( $result['message'] ) ) {
+				printf(
+					'<div class="notice notice-%1$s is-dismissible"><p>%2$s</p></div>',
+					! empty( $result['success'] ) ? 'success' : 'error',
+					esc_html( $result['message'] )
+				);
+			}
 		}
 	}
 

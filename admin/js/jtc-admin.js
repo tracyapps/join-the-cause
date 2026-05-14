@@ -35,11 +35,15 @@ jQuery( function ( $ ) {
 
 	function updateEmailMethod() {
 		var method = $( 'input[name="jtc_email_method"]:checked' ).val();
+		var provider = $( '#jtc_api_provider' ).val();
+
 		$( '.jtc-smtp-row' ).toggle( method === 'smtp' );
 		$( '.jtc-api-row'  ).toggle( method === 'api' );
+		$( '.jtc-mailgun-api-row' ).toggle( method === 'api' && provider === 'mailgun' );
 	}
 
 	$( document ).on( 'change', '.jtc-email-method-radio', updateEmailMethod );
+	$( document ).on( 'change', '#jtc_api_provider', updateEmailMethod );
 	updateEmailMethod();
 
 	// ── Form Field Builder (Petition edit screen) ─────────────────────────

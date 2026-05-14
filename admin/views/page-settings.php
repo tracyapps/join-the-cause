@@ -265,7 +265,7 @@ $defaults = get_option( 'jtc_petition_defaults', [] );
 						$methods = [
 							'wp_mail' => __( 'wp_mail (WordPress default)', 'join-the-cause' ),
 							'smtp'    => __( 'SMTP (override PHPMailer)',    'join-the-cause' ),
-							'api'     => __( 'API (SendGrid, etc.)',         'join-the-cause' ),
+							'api'     => __( 'API (Mailgun or SendGrid)',    'join-the-cause' ),
 						];
 						foreach ( $methods as $val => $lbl ) :
 						?>
@@ -342,9 +342,27 @@ $defaults = get_option( 'jtc_petition_defaults', [] );
 					<th scope="row"><label for="jtc_api_provider"><?php esc_html_e( 'Provider', 'join-the-cause' ); ?></label></th>
 					<td>
 						<select id="jtc_api_provider" name="jtc_api_provider">
-							<option value="sendgrid" <?php selected( get_option( 'jtc_api_provider', 'sendgrid' ), 'sendgrid' ); ?>>SendGrid</option>
+							<option value="mailgun" <?php selected( get_option( 'jtc_api_provider', 'mailgun' ), 'mailgun' ); ?>>Mailgun</option>
+							<option value="sendgrid" <?php selected( get_option( 'jtc_api_provider', 'mailgun' ), 'sendgrid' ); ?>>SendGrid</option>
 						</select>
-						<p class="description"><?php esc_html_e( 'Additional providers can be added via the jtc_api_providers filter.', 'join-the-cause' ); ?></p>
+					</td>
+				</tr>
+				<tr class="jtc-api-row jtc-mailgun-api-row">
+					<th scope="row"><label for="jtc_mailgun_domain"><?php esc_html_e( 'Mailgun domain', 'join-the-cause' ); ?></label></th>
+					<td>
+						<input type="text" id="jtc_mailgun_domain" name="jtc_mailgun_domain"
+							value="<?php echo esc_attr( get_option( 'jtc_mailgun_domain', '' ) ); ?>"
+							placeholder="mg.example.org" class="regular-text">
+						<p class="description"><?php esc_html_e( 'Use the verified sending domain from Mailgun.', 'join-the-cause' ); ?></p>
+					</td>
+				</tr>
+				<tr class="jtc-api-row jtc-mailgun-api-row">
+					<th scope="row"><label for="jtc_mailgun_region"><?php esc_html_e( 'Mailgun region', 'join-the-cause' ); ?></label></th>
+					<td>
+						<select id="jtc_mailgun_region" name="jtc_mailgun_region">
+							<option value="us" <?php selected( get_option( 'jtc_mailgun_region', 'us' ), 'us' ); ?>>US</option>
+							<option value="eu" <?php selected( get_option( 'jtc_mailgun_region', 'us' ), 'eu' ); ?>>EU</option>
+						</select>
 					</td>
 				</tr>
 				<tr class="jtc-api-row">
@@ -412,6 +430,10 @@ $defaults = get_option( 'jtc_petition_defaults', [] );
 					</td>
 				</tr>
 			</table>
+
+			<p>
+				<?php submit_button( __( 'Save and Send Test Email', 'join-the-cause' ), 'secondary', 'jtc_email_test_submit', false ); ?>
+			</p>
 		</div>
 		<?php endif; ?>
 

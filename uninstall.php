@@ -38,6 +38,8 @@ $option_keys = [
 	'jtc_smtp_encryption',
 	'jtc_api_provider',
 	'jtc_api_key',
+	'jtc_mailgun_domain',
+	'jtc_mailgun_region',
 	'jtc_from_name',
 	'jtc_from_email',
 	'jtc_welcome_email_enabled',

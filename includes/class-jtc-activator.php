@@ -113,8 +113,10 @@ class JTC_Activator {
 			'jtc_smtp_username'          => '',
 			'jtc_smtp_password'          => '',
 			'jtc_smtp_encryption'        => 'tls',
-			'jtc_api_provider'           => 'sendgrid',
+			'jtc_api_provider'           => 'mailgun',
 			'jtc_api_key'                => '',
+			'jtc_mailgun_domain'         => '',
+			'jtc_mailgun_region'         => 'us',
 			'jtc_from_name'              => get_bloginfo( 'name' ),
 			'jtc_from_email'             => get_option( 'admin_email' ),
 			// Transactional emails.

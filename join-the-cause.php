@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name:       Join the Cause
- * Plugin URI:        https://github.com/
+ * GitHub Plugin URI: https://github.com/tracyapps/join-the-cause
  * Description:       Petition and newsletter management for WordPress — create, manage, and share petitions with a change.org-style front end.
  * Version:           0.1.0
  * Author:

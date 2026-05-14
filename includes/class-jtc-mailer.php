@@ -5,7 +5,7 @@
  * Email method is controlled by jtc_email_method:
  *   'wp_mail'  — default, works anywhere WordPress does.
  *   'smtp'     — overrides PHPMailer via wp_mail (hooks into phpmailer_init).
- *   'api'      — direct API call (SendGrid implemented; extend for others).
+ *   'api'      — direct API call (SendGrid or Mailgun).
  *
  * @package JoinTheCause
  */
@@ -19,11 +19,16 @@ class JTC_Mailer {
 	private string $method;
 	private string $from_name;
 	private string $from_email;
+	private string $last_error = '';
 
 	public function __construct() {
 		$this->method     = get_option( 'jtc_email_method', 'wp_mail' );
 		$this->from_name  = get_option( 'jtc_from_name',   get_bloginfo( 'name' ) );
 		$this->from_email = get_option( 'jtc_from_email',  get_option( 'admin_email' ) );
+	}
+
+	public function get_last_error(): string {
+		return $this->last_error;
 	}
 
 	// ─── Public send methods ──────────────────────────────────────────────────
@@ -149,7 +154,10 @@ class JTC_Mailer {
 	 * @param bool   $is_html     True to send as HTML.
 	 */
 	public function send( string $to, string $subject, string $body, bool $is_html = false ): bool {
+		$this->last_error = '';
+
 		if ( ! is_email( $to ) ) {
+			$this->last_error = __( 'Recipient email address is invalid.', 'join-the-cause' );
 			return false;
 		}
 
@@ -175,10 +183,21 @@ class JTC_Mailer {
 			add_action( 'phpmailer_init', [ $this, 'configure_smtp' ] );
 		}
 
+		$capture_error = function ( WP_Error $error ): void {
+			$this->last_error = $error->get_error_message();
+		};
+		add_action( 'wp_mail_failed', $capture_error );
+
 		$result = wp_mail( $to, $subject, $body, $headers );
+
+		remove_action( 'wp_mail_failed', $capture_error );
 
 		if ( 'smtp' === $this->method ) {
 			remove_action( 'phpmailer_init', [ $this, 'configure_smtp' ] );
+		}
+
+		if ( ! $result && '' === $this->last_error ) {
+			$this->last_error = __( 'WordPress could not send the email.', 'join-the-cause' );
 		}
 
 		return $result;
@@ -195,24 +214,32 @@ class JTC_Mailer {
 		$mailer->Port       = (int) get_option( 'jtc_smtp_port', 587 );
 		$mailer->Username   = get_option( 'jtc_smtp_username', '' );
 		$mailer->Password   = get_option( 'jtc_smtp_password', '' );
-		$mailer->SMTPSecure = get_option( 'jtc_smtp_encryption', 'tls' );
+		$encryption         = get_option( 'jtc_smtp_encryption', 'tls' );
+		$mailer->SMTPSecure = 'none' === $encryption ? '' : $encryption;
 		$mailer->SMTPAuth   = (bool) $mailer->Username;
 	}
 
-	// ─── API (SendGrid + stub for others) ────────────────────────────────────
+	// ─── API (Mailgun + SendGrid) ────────────────────────────────────────────
 
 	private function send_via_api( string $to, string $subject, string $body, bool $is_html ): bool {
-		$provider = get_option( 'jtc_api_provider', 'sendgrid' );
+		$provider = get_option( 'jtc_api_provider', 'mailgun' );
 		$api_key  = get_option( 'jtc_api_key', '' );
 
 		if ( empty( $api_key ) ) {
+			$this->last_error = __( 'API key is missing.', 'join-the-cause' );
 			return false;
 		}
 
 		return match ( $provider ) {
 			'sendgrid' => $this->sendgrid( $to, $subject, $body, $is_html, $api_key ),
-			default    => false,
+			'mailgun'  => $this->mailgun( $to, $subject, $body, $is_html, $api_key ),
+			default    => $this->unsupported_api_provider(),
 		};
+	}
+
+	private function unsupported_api_provider(): bool {
+		$this->last_error = __( 'Selected API provider is not supported.', 'join-the-cause' );
+		return false;
 	}
 
 	private function sendgrid( string $to, string $subject, string $body, bool $is_html, string $api_key ): bool {
@@ -236,11 +263,84 @@ class JTC_Mailer {
 		] );
 
 		if ( is_wp_error( $response ) ) {
+			$this->last_error = $response->get_error_message();
 			return false;
 		}
 
 		$code = wp_remote_retrieve_response_code( $response );
-		return $code >= 200 && $code < 300;
+		if ( $code >= 200 && $code < 300 ) {
+			return true;
+		}
+
+		$this->last_error = sprintf(
+			/* translators: %d HTTP response code */
+			__( 'SendGrid returned HTTP %d.', 'join-the-cause' ),
+			$code
+		);
+		return false;
+	}
+
+	private function mailgun( string $to, string $subject, string $body, bool $is_html, string $api_key ): bool {
+		$domain = $this->normalize_mailgun_domain( get_option( 'jtc_mailgun_domain', '' ) );
+		if ( '' === $domain ) {
+			$this->last_error = __( 'Mailgun domain is missing.', 'join-the-cause' );
+			return false;
+		}
+
+		$region   = get_option( 'jtc_mailgun_region', 'us' );
+		$base_url = 'eu' === $region ? 'https://api.eu.mailgun.net' : 'https://api.mailgun.net';
+		$endpoint = $base_url . '/v3/' . rawurlencode( $domain ) . '/messages';
+		$body_key = $is_html ? 'html' : 'text';
+
+		$response = wp_remote_post( $endpoint, [
+			'headers' => [
+				'Authorization' => 'Basic ' . base64_encode( 'api:' . $api_key ),
+			],
+			'body'    => [
+				'from'    => $this->format_from_header(),
+				'to'      => $to,
+				'subject' => $subject,
+				$body_key => $body,
+			],
+			'timeout' => 15,
+		] );
+
+		if ( is_wp_error( $response ) ) {
+			$this->last_error = $response->get_error_message();
+			return false;
+		}
+
+		$code = wp_remote_retrieve_response_code( $response );
+		if ( $code >= 200 && $code < 300 ) {
+			return true;
+		}
+
+		$message = wp_remote_retrieve_body( $response );
+		$data    = json_decode( $message, true );
+		if ( is_array( $data ) && ! empty( $data['message'] ) ) {
+			$message = $data['message'];
+		}
+
+		$this->last_error = sprintf(
+			/* translators: 1 HTTP response code, 2 API response message */
+			__( 'Mailgun returned HTTP %1$d. %2$s', 'join-the-cause' ),
+			$code,
+			wp_strip_all_tags( (string) $message )
+		);
+		return false;
+	}
+
+	private function normalize_mailgun_domain( string $domain ): string {
+		$domain = trim( strtolower( $domain ) );
+		$domain = preg_replace( '#^https?://#', '', $domain );
+		$domain = strtok( $domain, '/:' );
+
+		return sanitize_text_field( (string) $domain );
+	}
+
+	private function format_from_header(): string {
+		$name = trim( str_replace( [ "\r", "\n" ], '', $this->from_name ) );
+		return '' === $name ? $this->from_email : sprintf( '%s <%s>', $name, $this->from_email );
 	}
 
 	// ─── Token replacement ────────────────────────────────────────────────────
