@@ -1,0 +1,1992 @@
+# Copyright (C) 2026 Tracy Apps
+# This file is distributed under the GPL-2.0+.
+msgid ""
+msgstr ""
+"Project-Id-Version: Join the Cause 0.1.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/join-the-cause\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-10-04T05:27:13+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: join-the-cause\n"
+
+#. Plugin Name of the plugin
+#: join-the-cause.php
+#: admin/class-jtc-admin.php:40
+#: admin/class-jtc-admin.php:41
+#: includes/class-jtc-block.php:91
+msgid "Join the Cause"
+msgstr ""
+
+#. Description of the plugin
+#: join-the-cause.php
+msgid "Petition and newsletter management for WordPress — create, manage, and share petitions with a change.org-style front end."
+msgstr ""
+
+#. Author of the plugin
+#: join-the-cause.php
+msgid "Tracy Apps"
+msgstr ""
+
+#. Author URI of the plugin
+#: join-the-cause.php
+msgid "https://github.com/tracyapps"
+msgstr ""
+
+#: admin/class-jtc-admin.php:51
+msgid "Settings — Join the Cause"
+msgstr ""
+
+#: admin/class-jtc-admin.php:52
+msgid "Settings"
+msgstr ""
+
+#: admin/class-jtc-admin.php:60
+msgid "Petitions — Join the Cause"
+msgstr ""
+
+#: admin/class-jtc-admin.php:61
+#: admin/views/page-settings.php:20
+#: includes/class-jtc-post-types.php:57
+#: includes/class-jtc-post-types.php:67
+msgid "Petitions"
+msgstr ""
+
+#: admin/class-jtc-admin.php:68
+msgid "Supporters — Join the Cause"
+msgstr ""
+
+#: admin/class-jtc-admin.php:69
+#: admin/views/page-supporters.php:86
+#: admin/views/page-supporters.php:143
+msgid "Supporters"
+msgstr ""
+
+#: admin/class-jtc-admin.php:77
+msgid "Newsletter — Join the Cause"
+msgstr ""
+
+#: admin/class-jtc-admin.php:78
+#: admin/views/page-newsletter.php:67
+msgid "Newsletter"
+msgstr ""
+
+#: admin/class-jtc-admin.php:123
+msgid "Are you sure you want to delete this record? This cannot be undone."
+msgstr ""
+
+#. translators: %d: number of recipients
+#: admin/class-jtc-admin.php:125
+#, php-format
+msgid "Send this newsletter now to %d recipients? This cannot be undone."
+msgstr ""
+
+#: admin/class-jtc-admin.php:126
+msgid "Send this newsletter now? This cannot be undone."
+msgstr ""
+
+#: admin/class-jtc-admin.php:127
+#: admin/class-jtc-admin.php:634
+#: includes/class-jtc-shortcode.php:127
+msgid "Copied!"
+msgstr ""
+
+#: admin/class-jtc-admin.php:128
+msgid "New Field"
+msgstr ""
+
+#: admin/class-jtc-admin.php:129
+#: includes/class-jtc-post-types.php:375
+msgid "Field label"
+msgstr ""
+
+#: admin/class-jtc-admin.php:130
+#: includes/class-jtc-post-types.php:379
+msgid "Field type"
+msgstr ""
+
+#: admin/class-jtc-admin.php:131
+#: includes/class-jtc-post-types.php:390
+msgid "Placeholder text"
+msgstr ""
+
+#: admin/class-jtc-admin.php:132
+#: includes/class-jtc-post-types.php:406
+msgid "Required field"
+msgstr ""
+
+#: admin/class-jtc-admin.php:133
+#: includes/class-jtc-post-types.php:412
+msgid "Remove this field"
+msgstr ""
+
+#: admin/class-jtc-admin.php:134
+#: includes/class-jtc-post-types.php:233
+#: includes/class-jtc-post-types.php:369
+msgid "Drag to reorder"
+msgstr ""
+
+#: admin/class-jtc-admin.php:135
+#: includes/class-jtc-post-types.php:410
+msgid "Move field up"
+msgstr ""
+
+#: admin/class-jtc-admin.php:136
+#: includes/class-jtc-post-types.php:411
+msgid "Move field down"
+msgstr ""
+
+#: admin/class-jtc-admin.php:137
+#: includes/class-jtc-post-types.php:398
+msgid "Select field options"
+msgstr ""
+
+#: admin/class-jtc-admin.php:138
+#: includes/class-jtc-post-types.php:397
+msgid "One option per line"
+msgstr ""
+
+#: admin/class-jtc-admin.php:139
+#: includes/class-jtc-shortcode.php:136
+#: includes/class-jtc-shortcode.php:293
+msgid "Print QR"
+msgstr ""
+
+#: admin/class-jtc-admin.php:140
+#: includes/class-jtc-shortcode.php:137
+msgid "QR code"
+msgstr ""
+
+#: admin/class-jtc-admin.php:141
+msgid "Testing connection…"
+msgstr ""
+
+#: admin/class-jtc-admin.php:142
+#: includes/class-jtc-shortcode.php:124
+msgid "Something went wrong. Please try again."
+msgstr ""
+
+#: admin/class-jtc-admin.php:143
+msgid "Debug information copied to clipboard."
+msgstr ""
+
+#. translators: %d: number of recipients
+#: admin/class-jtc-admin.php:145
+#, php-format
+msgid "%d recipients"
+msgstr ""
+
+#: admin/class-jtc-admin.php:146
+msgid "1 recipient"
+msgstr ""
+
+#: admin/class-jtc-admin.php:163
+#: admin/class-jtc-admin.php:333
+#: admin/views/page-newsletter.php:9
+#: admin/views/page-settings.php:15
+#: admin/views/page-supporters.php:9
+#: admin/views/settings/help.php:13
+msgid "Not allowed."
+msgstr ""
+
+#: admin/class-jtc-admin.php:339
+msgid "Short.io is not configured yet. Save your API key and short domain first."
+msgstr ""
+
+#: admin/class-jtc-admin.php:365
+msgid "[Join the Cause] Email test"
+msgstr ""
+
+#. translators: %s site name
+#: admin/class-jtc-admin.php:368
+#, php-format
+msgid ""
+"This is a test email from Join the Cause on %s.\n"
+"\n"
+"If you received it, your email settings are working."
+msgstr ""
+
+#. translators: %s recipient email
+#: admin/class-jtc-admin.php:375
+#, php-format
+msgid "Test email sent to %s."
+msgstr ""
+
+#. translators: %s mailer error
+#: admin/class-jtc-admin.php:380
+#, php-format
+msgid "Test email failed. %s"
+msgstr ""
+
+#: admin/class-jtc-admin.php:381
+msgid "No additional error was returned."
+msgstr ""
+
+#: admin/class-jtc-admin.php:543
+msgid "Settings saved."
+msgstr ""
+
+#: admin/class-jtc-admin.php:563
+msgid "Supporter deleted."
+msgstr ""
+
+#. translators: %d number of recipients
+#: admin/class-jtc-admin.php:573
+#, php-format
+msgid "Newsletter sent to %d recipients."
+msgstr ""
+
+#: admin/class-jtc-admin.php:580
+msgid "Newsletter draft saved."
+msgstr ""
+
+#: admin/class-jtc-admin.php:586
+msgid "Test email sent to you."
+msgstr ""
+
+#: admin/class-jtc-admin.php:587
+msgid "Test email failed. Check the Email tab settings."
+msgstr ""
+
+#: admin/class-jtc-admin.php:588
+msgid "Add a subject and message before sending a test."
+msgstr ""
+
+#: admin/class-jtc-admin.php:635
+msgid "Shortcode copied to clipboard."
+msgstr ""
+
+#: admin/class-jtc-admin.php:637
+#: includes/class-jtc-post-types.php:135
+msgid "Click to copy"
+msgstr ""
+
+#: admin/views/page-newsletter.php:71
+msgid "A previous newsletter send looks interrupted. Its progress is saved in the archive below; sending again starts a fresh pass."
+msgstr ""
+
+#: admin/views/page-newsletter.php:77
+msgid "Edit Draft"
+msgstr ""
+
+#: admin/views/page-newsletter.php:77
+msgid "Compose Newsletter"
+msgstr ""
+
+#: admin/views/page-newsletter.php:87
+msgid "Send to signers of"
+msgstr ""
+
+#: admin/views/page-newsletter.php:90
+#: admin/views/page-supporters.php:95
+msgid "— All petitions —"
+msgstr ""
+
+#: admin/views/page-newsletter.php:99
+msgid "Selects the recipients. \"All petitions\" sends to everyone in your database."
+msgstr ""
+
+#: admin/views/page-newsletter.php:103
+msgid "Subject line"
+msgstr ""
+
+#: admin/views/page-newsletter.php:111
+msgid "Message"
+msgstr ""
+
+#: admin/views/page-newsletter.php:127
+msgid "Use {first_name} to personalise. Emails are sent as HTML."
+msgstr ""
+
+#: admin/views/page-newsletter.php:134
+msgid "Save as Draft"
+msgstr ""
+
+#: admin/views/page-newsletter.php:138
+msgid "Send Test to Me"
+msgstr ""
+
+#: admin/views/page-newsletter.php:143
+msgid "Send Now"
+msgstr ""
+
+#. translators: %s: number of recipients
+#: admin/views/page-newsletter.php:150
+#, php-format
+msgid "Will send to %s recipient."
+msgid_plural "Will send to %s recipients."
+msgstr[0] ""
+msgstr[1] ""
+
+#: admin/views/page-newsletter.php:158
+msgid "Sending runs synchronously and saves progress per batch, so an interruption never loses the sent count. For very large lists, prefer a dedicated mailing service."
+msgstr ""
+
+#: admin/views/page-newsletter.php:165
+msgid "Newsletter Archive"
+msgstr ""
+
+#: admin/views/page-newsletter.php:168
+msgid "No newsletters yet."
+msgstr ""
+
+#: admin/views/page-newsletter.php:170
+msgid "Newsletter archive"
+msgstr ""
+
+#: admin/views/page-newsletter.php:173
+#: admin/views/settings/email.php:174
+msgid "Subject"
+msgstr ""
+
+#: admin/views/page-newsletter.php:174
+#: admin/views/page-supporters.php:156
+#: includes/class-jtc-post-types.php:58
+#: blocks/petition/index.js:147
+#: blocks/petition/index.js:161
+#: blocks/petition/index.js:189
+#: blocks/petition/index.js:216
+msgid "Petition"
+msgstr ""
+
+#: admin/views/page-newsletter.php:175
+msgid "Status"
+msgstr ""
+
+#: admin/views/page-newsletter.php:176
+msgid "Recipients"
+msgstr ""
+
+#: admin/views/page-newsletter.php:177
+msgid "Date"
+msgstr ""
+
+#: admin/views/page-newsletter.php:178
+#: admin/views/page-supporters.php:163
+msgid "Actions"
+msgstr ""
+
+#: admin/views/page-newsletter.php:189
+msgid "All petitions"
+msgstr ""
+
+#: admin/views/page-newsletter.php:205
+msgid "Edit"
+msgstr ""
+
+#: admin/views/page-newsletter.php:212
+msgid "Delete this draft?"
+msgstr ""
+
+#: admin/views/page-newsletter.php:213
+#: admin/views/page-supporters.php:209
+msgid "Delete"
+msgstr ""
+
+#: admin/views/page-newsletter.php:217
+msgid "Sent"
+msgstr ""
+
+#: admin/views/page-settings.php:18
+msgid "Help & Quick Start"
+msgstr ""
+
+#: admin/views/page-settings.php:19
+msgid "Appearance"
+msgstr ""
+
+#: admin/views/page-settings.php:21
+#: admin/views/page-supporters.php:153
+msgid "Email"
+msgstr ""
+
+#: admin/views/page-settings.php:22
+msgid "Integrations"
+msgstr ""
+
+#: admin/views/page-settings.php:23
+msgid "General"
+msgstr ""
+
+#: admin/views/page-settings.php:37
+msgid "Join the Cause — Settings"
+msgstr ""
+
+#: admin/views/page-settings.php:39
+msgid "Settings tabs"
+msgstr ""
+
+#: admin/views/page-settings.php:62
+msgid "Save Settings"
+msgstr ""
+
+#: admin/views/page-supporters.php:94
+msgid "Filter by petition"
+msgstr ""
+
+#: admin/views/page-supporters.php:104
+msgid "Search supporters"
+msgstr ""
+
+#: admin/views/page-supporters.php:107
+msgid "Search name or email…"
+msgstr ""
+
+#: admin/views/page-supporters.php:109
+msgid "Filter"
+msgstr ""
+
+#: admin/views/page-supporters.php:123
+msgid "Export CSV"
+msgstr ""
+
+#. translators: %d number of records
+#: admin/views/page-supporters.php:135
+#, php-format
+msgid "%d supporter"
+msgid_plural "%d supporters"
+msgstr[0] ""
+msgstr[1] ""
+
+#: admin/views/page-supporters.php:148
+msgid "Name"
+msgstr ""
+
+#: admin/views/page-supporters.php:159
+msgid "Signed"
+msgstr ""
+
+#: admin/views/page-supporters.php:162
+msgid "Display consent"
+msgstr ""
+
+#: admin/views/page-supporters.php:169
+msgid "No supporters found."
+msgstr ""
+
+#: admin/views/page-supporters.php:190
+#: includes/class-jtc-post-types.php:222
+msgid "Yes"
+msgstr ""
+
+#: admin/views/page-supporters.php:192
+msgid "No"
+msgstr ""
+
+#. translators: %s: supporter name
+#: admin/views/page-supporters.php:204
+#, php-format
+msgid "Delete %s"
+msgstr ""
+
+#: admin/views/page-supporters.php:208
+msgid "Delete this supporter? This cannot be undone."
+msgstr ""
+
+#: admin/views/settings/appearance.php:25
+msgid "Colour Theme"
+msgstr ""
+
+#: admin/views/settings/appearance.php:26
+msgid "Choose how colours are applied to your petition pages. Selecting \"None\" lets your active theme handle all styling."
+msgstr ""
+
+#: admin/views/settings/appearance.php:30
+msgid "Colour mode"
+msgstr ""
+
+#: admin/views/settings/appearance.php:34
+msgid "Preset theme"
+msgstr ""
+
+#: admin/views/settings/appearance.php:35
+msgid "Custom colours (colour picker)"
+msgstr ""
+
+#: admin/views/settings/appearance.php:36
+msgid "None (use theme styles only)"
+msgstr ""
+
+#: admin/views/settings/appearance.php:51
+msgid "Choose preset"
+msgstr ""
+
+#: admin/views/settings/appearance.php:53
+msgid "Colour preset options"
+msgstr ""
+
+#: admin/views/settings/appearance.php:73
+msgid "Custom colours"
+msgstr ""
+
+#: admin/views/settings/appearance.php:78
+msgid "Primary colour"
+msgstr ""
+
+#: admin/views/settings/appearance.php:79
+msgid "Dark variant"
+msgstr ""
+
+#: admin/views/settings/appearance.php:80
+msgid "Light accent / bg"
+msgstr ""
+
+#: admin/views/settings/appearance.php:81
+msgid "Hero gradient start"
+msgstr ""
+
+#: admin/views/settings/appearance.php:82
+msgid "Hero gradient end"
+msgstr ""
+
+#: admin/views/settings/appearance.php:83
+msgid "Page background"
+msgstr ""
+
+#: admin/views/settings/appearance.php:84
+msgid "Content background"
+msgstr ""
+
+#: admin/views/settings/appearance.php:85
+msgid "Accent background"
+msgstr ""
+
+#: admin/views/settings/appearance.php:86
+msgid "Borders"
+msgstr ""
+
+#: admin/views/settings/appearance.php:103
+msgid "Text colours, input backgrounds, and the on-button text colour are derived automatically from your surface and primary colours."
+msgstr ""
+
+#: admin/views/settings/appearance.php:109
+msgid "Layout & Style"
+msgstr ""
+
+#: admin/views/settings/appearance.php:110
+msgid "Applies to every petition. Changes preview live in the panel below."
+msgstr ""
+
+#: admin/views/settings/appearance.php:114
+msgid "Corner radius"
+msgstr ""
+
+#: admin/views/settings/appearance.php:117
+msgid "Compact (4px)"
+msgstr ""
+
+#: admin/views/settings/appearance.php:117
+msgid "Default (8px)"
+msgstr ""
+
+#: admin/views/settings/appearance.php:117
+msgid "Round (14px)"
+msgstr ""
+
+#: admin/views/settings/appearance.php:117
+msgid "Pill"
+msgstr ""
+
+#: admin/views/settings/appearance.php:124
+msgid "Shadow level"
+msgstr ""
+
+#: admin/views/settings/appearance.php:127
+#: admin/views/settings/email.php:86
+msgid "None"
+msgstr ""
+
+#: admin/views/settings/appearance.php:127
+msgid "Subtle"
+msgstr ""
+
+#: admin/views/settings/appearance.php:127
+msgid "Default"
+msgstr ""
+
+#: admin/views/settings/appearance.php:127
+msgid "Strong"
+msgstr ""
+
+#: admin/views/settings/appearance.php:134
+msgid "Button style"
+msgstr ""
+
+#: admin/views/settings/appearance.php:137
+#: admin/views/settings/appearance.php:194
+msgid "Solid"
+msgstr ""
+
+#: admin/views/settings/appearance.php:138
+msgid "Outline"
+msgstr ""
+
+#: admin/views/settings/appearance.php:143
+msgid "Font source"
+msgstr ""
+
+#: admin/views/settings/appearance.php:146
+msgid "Inherit from theme (recommended)"
+msgstr ""
+
+#: admin/views/settings/appearance.php:147
+msgid "System UI stack"
+msgstr ""
+
+#: admin/views/settings/appearance.php:148
+msgid "Custom stack"
+msgstr ""
+
+#: admin/views/settings/appearance.php:151
+msgid "Custom font stack"
+msgstr ""
+
+#: admin/views/settings/appearance.php:159
+msgid "Text size"
+msgstr ""
+
+#: admin/views/settings/appearance.php:169
+msgid "Sign panel width"
+msgstr ""
+
+#: admin/views/settings/appearance.php:179
+msgid "Content max width"
+msgstr ""
+
+#: admin/views/settings/appearance.php:182
+msgid "Full width (theme container)"
+msgstr ""
+
+#: admin/views/settings/appearance.php:190
+msgid "Hero style"
+msgstr ""
+
+#: admin/views/settings/appearance.php:193
+msgid "Gradient (default)"
+msgstr ""
+
+#: admin/views/settings/appearance.php:195
+msgid "Minimal (no fill)"
+msgstr ""
+
+#: admin/views/settings/appearance.php:200
+msgid "Hero text colour"
+msgstr ""
+
+#: admin/views/settings/appearance.php:210
+msgid "Leave empty for automatic white text. If you use light hero colours, set a dark text colour here."
+msgstr ""
+
+#: admin/views/settings/appearance.php:214
+msgid "Sections"
+msgstr ""
+
+#: admin/views/settings/appearance.php:217
+msgid "Global section visibility"
+msgstr ""
+
+#: admin/views/settings/appearance.php:220
+msgid "Show the share section"
+msgstr ""
+
+#: admin/views/settings/appearance.php:224
+msgid "Show the QR code block inside the share section"
+msgstr ""
+
+#: admin/views/settings/appearance.php:228
+msgid "Show the dek (excerpt) in the hero"
+msgstr ""
+
+#: admin/views/settings/appearance.php:232
+msgid "Show the featured image in the hero"
+msgstr ""
+
+#: admin/views/settings/appearance.php:234
+msgid "Recent signers visibility is controlled under Petitions (defaults) and per petition."
+msgstr ""
+
+#: admin/views/settings/appearance.php:240
+msgid "Live preview"
+msgstr ""
+
+#: admin/views/settings/appearance.php:241
+msgid "Sample petition — updates instantly as you change the settings above. Nothing here is saved until you press Save Settings."
+msgstr ""
+
+#: admin/views/settings/appearance.php:246
+msgid "Clean water for every school"
+msgstr ""
+
+#: admin/views/settings/appearance.php:247
+msgid "Sample dek text: one sentence that tells people why this matters right now."
+msgstr ""
+
+#: admin/views/settings/appearance.php:250
+#: includes/class-jtc-shortcode.php:320
+msgid "have signed"
+msgstr ""
+
+#: admin/views/settings/appearance.php:251
+#: includes/class-jtc-shortcode.php:419
+msgid "First name"
+msgstr ""
+
+#: admin/views/settings/appearance.php:252
+msgid "Jane"
+msgstr ""
+
+#: admin/views/settings/appearance.php:253
+#: includes/class-jtc-shortcode.php:123
+#: includes/class-jtc-shortcode.php:370
+#: includes/class-jtc-shortcode.php:412
+#: includes/class-jtc-shortcode.php:605
+msgid "Sign the Petition"
+msgstr ""
+
+#: admin/views/settings/appearance.php:255
+#: includes/class-jtc-shortcode.php:621
+msgid "Share on Facebook"
+msgstr ""
+
+#: admin/views/settings/appearance.php:256
+#: includes/class-jtc-shortcode.php:126
+#: includes/class-jtc-shortcode.php:631
+msgid "Copy link"
+msgstr ""
+
+#: admin/views/settings/defaults.php:16
+msgid "Petition Defaults"
+msgstr ""
+
+#: admin/views/settings/defaults.php:17
+msgid "These settings apply to all petitions unless overridden on the individual petition."
+msgstr ""
+
+#: admin/views/settings/defaults.php:21
+msgid "Display"
+msgstr ""
+
+#: admin/views/settings/defaults.php:24
+msgid "Display options"
+msgstr ""
+
+#: admin/views/settings/defaults.php:27
+msgid "Show total signature count"
+msgstr ""
+
+#: admin/views/settings/defaults.php:31
+msgid "Show recent signer names (adds opt-in consent checkbox to form)"
+msgstr ""
+
+#: admin/views/settings/defaults.php:35
+msgid "Allow WordPress comments"
+msgstr ""
+
+#: admin/views/settings/defaults.php:42
+#: includes/class-jtc-post-types.php:439
+msgid "Signature goal"
+msgstr ""
+
+#: admin/views/settings/defaults.php:46
+#: includes/class-jtc-post-types.php:443
+msgid "0 = no goal shown."
+msgstr ""
+
+#: admin/views/settings/defaults.php:51
+#: includes/class-jtc-post-types.php:474
+msgid "After signing"
+msgstr ""
+
+#: admin/views/settings/defaults.php:56
+msgid "Show success message"
+msgstr ""
+
+#: admin/views/settings/defaults.php:61
+#: includes/class-jtc-post-types.php:484
+msgid "Redirect to URL"
+msgstr ""
+
+#: admin/views/settings/defaults.php:67
+#: includes/class-jtc-post-types.php:489
+msgid "Success message"
+msgstr ""
+
+#: admin/views/settings/defaults.php:75
+#: includes/class-jtc-post-types.php:496
+msgid "Redirect URL"
+msgstr ""
+
+#: admin/views/settings/defaults.php:84
+#: includes/class-jtc-post-types.php:504
+msgid "Share buttons"
+msgstr ""
+
+#: admin/views/settings/defaults.php:87
+msgid "Share services"
+msgstr ""
+
+#: admin/views/settings/email.php:14
+msgid "Email Settings"
+msgstr ""
+
+#: admin/views/settings/email.php:16
+msgid "Signatures are always saved, even when an email fails to send. The last failure is shown under Help & Quick Start → Debug information."
+msgstr ""
+
+#: admin/views/settings/email.php:21
+msgid "Sending method"
+msgstr ""
+
+#: admin/views/settings/email.php:26
+msgid "wp_mail (WordPress default)"
+msgstr ""
+
+#: admin/views/settings/email.php:27
+msgid "SMTP (override PHPMailer)"
+msgstr ""
+
+#: admin/views/settings/email.php:28
+msgid "API (Mailgun or SendGrid)"
+msgstr ""
+
+#: admin/views/settings/email.php:39
+msgid "Not sure? wp_mail works everywhere; SMTP and API give better deliverability. See the decision table under Help & Quick Start."
+msgstr ""
+
+#: admin/views/settings/email.php:45
+msgid "From name"
+msgstr ""
+
+#: admin/views/settings/email.php:54
+msgid "From email"
+msgstr ""
+
+#: admin/views/settings/email.php:59
+msgid "Use an address on a domain you control (it should pass SPF/DKIM)."
+msgstr ""
+
+#: admin/views/settings/email.php:65
+msgid "SMTP Settings"
+msgstr ""
+
+#: admin/views/settings/email.php:68
+msgid "SMTP host"
+msgstr ""
+
+#: admin/views/settings/email.php:74
+msgid "SMTP port"
+msgstr ""
+
+#: admin/views/settings/email.php:79
+msgid "Valid range 1–65535. Typical: 587 (TLS), 465 (SSL), 25 (plain, often blocked)."
+msgstr ""
+
+#: admin/views/settings/email.php:83
+msgid "Encryption"
+msgstr ""
+
+#: admin/views/settings/email.php:93
+msgid "SMTP username"
+msgstr ""
+
+#: admin/views/settings/email.php:98
+msgid "SMTP password"
+msgstr ""
+
+#: admin/views/settings/email.php:105
+msgid "A password is saved — leave blank to keep it."
+msgstr ""
+
+#: admin/views/settings/email.php:106
+msgid "No password saved yet."
+msgstr ""
+
+#: admin/views/settings/email.php:114
+msgid "API Settings"
+msgstr ""
+
+#: admin/views/settings/email.php:117
+msgid "Provider"
+msgstr ""
+
+#: admin/views/settings/email.php:123
+msgid "Mailgun needs your verified sending domain; SendGrid only needs the API key."
+msgstr ""
+
+#: admin/views/settings/email.php:127
+msgid "Mailgun domain"
+msgstr ""
+
+#: admin/views/settings/email.php:132
+msgid "Use the verified sending domain from Mailgun."
+msgstr ""
+
+#: admin/views/settings/email.php:136
+msgid "Mailgun region"
+msgstr ""
+
+#: admin/views/settings/email.php:145
+msgid "API key"
+msgstr ""
+
+#: admin/views/settings/email.php:152
+msgid "A key is saved. Leave blank to keep it."
+msgstr ""
+
+#: admin/views/settings/email.php:153
+#: admin/views/settings/integrations.php:60
+msgid "No key saved yet."
+msgstr ""
+
+#: admin/views/settings/email.php:161
+msgid "Welcome Email"
+msgstr ""
+
+#: admin/views/settings/email.php:164
+msgid "Send welcome email"
+msgstr ""
+
+#: admin/views/settings/email.php:169
+msgid "Send a thank-you email to each new signer"
+msgstr ""
+
+#: admin/views/settings/email.php:181
+msgid "Body"
+msgstr ""
+
+#: admin/views/settings/email.php:187
+msgid "Available tokens: {first_name}, {last_name}, {email}, {petition_title}, {petition_url}, {petition_short_url}, {site_name}, {site_url}"
+msgstr ""
+
+#: admin/views/settings/email.php:194
+msgid "Admin Notification"
+msgstr ""
+
+#: admin/views/settings/email.php:197
+msgid "Notify admin"
+msgstr ""
+
+#: admin/views/settings/email.php:202
+msgid "Send me an email each time someone signs a petition"
+msgstr ""
+
+#: admin/views/settings/email.php:207
+msgid "Notify email address"
+msgstr ""
+
+#: admin/views/settings/email.php:217
+msgid "Save and Send Test Email"
+msgstr ""
+
+#: admin/views/settings/email.php:218
+msgid "Sends a test message to your admin email and shows the result as a notice."
+msgstr ""
+
+#: admin/views/settings/general.php:14
+msgid "Global Petition Text"
+msgstr ""
+
+#: admin/views/settings/general.php:15
+msgid "This text appears on every petition. Leave blank to omit."
+msgstr ""
+
+#: admin/views/settings/general.php:19
+msgid "Privacy notice"
+msgstr ""
+
+#: admin/views/settings/general.php:23
+msgid "Displayed below the signature form. Basic HTML allowed."
+msgstr ""
+
+#: admin/views/settings/general.php:27
+msgid "Terms of service"
+msgstr ""
+
+#: admin/views/settings/general.php:35
+msgid "Environment"
+msgstr ""
+
+#: admin/views/settings/general.php:38
+msgid "Proxy headers"
+msgstr ""
+
+#: admin/views/settings/general.php:43
+msgid "JTC_TRUST_PROXY_HEADERS is defined as true: Cloudflare / X-Forwarded-For / X-Real-IP headers are trusted for rate limiting."
+msgstr ""
+
+#: admin/views/settings/general.php:45
+msgid "Only the direct connection address (REMOTE_ADDR) is trusted for rate limiting, which is spoof-proof. Behind Cloudflare or a reverse proxy, define JTC_TRUST_PROXY_HEADERS as true in wp-config.php to limit by the real visitor address instead."
+msgstr ""
+
+#: admin/views/settings/general.php:52
+msgid "Email failures"
+msgstr ""
+
+#: admin/views/settings/general.php:55
+msgid "Signatures are always stored even if notification emails fail. The most recent error is shown under Help & Quick Start → Debug information."
+msgstr ""
+
+#: admin/views/settings/help.php:40
+msgid "Quick Start"
+msgstr ""
+
+#: admin/views/settings/help.php:42
+msgid "Five steps from install to a live petition."
+msgstr ""
+
+#: admin/views/settings/help.php:46
+msgid "Create a petition"
+msgstr ""
+
+#: admin/views/settings/help.php:47
+#: includes/class-jtc-post-types.php:60
+msgid "Add New Petition"
+msgstr ""
+
+#: admin/views/settings/help.php:48
+msgid "The title is the headline; the excerpt becomes the dek (intro paragraph)."
+msgstr ""
+
+#: admin/views/settings/help.php:51
+msgid "Choose what to collect"
+msgstr ""
+
+#: admin/views/settings/help.php:52
+msgid "the \"Signature Form Fields\" box on the petition editor. First name, last name, and email are always collected; add extra fields as needed (select fields take one option per line)."
+msgstr ""
+
+#: admin/views/settings/help.php:55
+msgid "Embed it"
+msgstr ""
+
+#: admin/views/settings/help.php:56
+msgid "paste the shortcode shown in the Petitions list into any page, insert the Petition block, or use the dedicated petition URL."
+msgstr ""
+
+#: admin/views/settings/help.php:59
+msgid "Connect email"
+msgstr ""
+
+#: admin/views/settings/help.php:60
+msgid "set up your mailer"
+msgstr ""
+
+#: admin/views/settings/help.php:61
+msgid "and send yourself a test email so signers receive confirmations."
+msgstr ""
+
+#: admin/views/settings/help.php:64
+msgid "Optional: short links + QR codes"
+msgstr ""
+
+#: admin/views/settings/help.php:65
+msgid "connect Short.io"
+msgstr ""
+
+#: admin/views/settings/help.php:66
+msgid "for branded share URLs and printable QR codes."
+msgstr ""
+
+#: admin/views/settings/help.php:70
+msgid "Making a petition"
+msgstr ""
+
+#: admin/views/settings/help.php:72
+msgid "Where: Dashboard → Join the Cause → Petitions → Add New (or the Add New link above)."
+msgstr ""
+
+#: admin/views/settings/help.php:73
+msgid "Featured image = hero image: it fills the petition header and doubles as the social-sharing image (a 1200×630 card is generated from the site logo when a petition has no image)."
+msgstr ""
+
+#: admin/views/settings/help.php:74
+msgid "Excerpt = dek. Write one short intro sentence; without an excerpt the first words of the content are used."
+msgstr ""
+
+#: admin/views/settings/help.php:75
+msgid "Signature fields: the box below the editor. \"Required\" fields are validated on the server as well as in the browser."
+msgstr ""
+
+#: admin/views/settings/help.php:76
+msgid "Petition Settings (side panel): goal, count, recent signers, post-sign behavior, share buttons — per-petition overrides of the defaults."
+msgstr ""
+
+#: admin/views/settings/help.php:77
+msgid "Publish, then embed the shortcode or block anywhere — multiple petitions can live on one page, each works independently."
+msgstr ""
+
+#: admin/views/settings/help.php:80
+msgid "Embedding guide"
+msgstr ""
+
+#: admin/views/settings/help.php:81
+msgid "In the block editor: add the \"Petition\" block (search for it, or look under the Join the Cause category), pick a petition in the block sidebar, and publish. The editor preview matches the front end."
+msgstr ""
+
+#: admin/views/settings/help.php:82
+msgid "Everywhere else — widgets, page builders, PHP templates — paste the shortcode from the Petitions list (\"Shortcode\" column, click to copy):"
+msgstr ""
+
+#: admin/views/settings/help.php:85
+msgid "Block vs. shortcode: both render the same petition (identical markup); use the block when you are already in the block editor, and the shortcode for widgets, page builders, and templates."
+msgstr ""
+
+#: admin/views/settings/help.php:86
+msgid "\"Show title\" (block) and show_title=\"1\" (shortcode) render the petition title as an H1 — use it when the petition replaces the page title (the standalone /petition/… URL already does this)."
+msgstr ""
+
+#: admin/views/settings/help.php:87
+msgid "Petition URLs like /petition/your-slug/ work on their own and can be shared directly."
+msgstr ""
+
+#: admin/views/settings/help.php:90
+msgid "Mailer setup guide"
+msgstr ""
+
+#: admin/views/settings/help.php:91
+msgid "Pick a sending method on the Email tab. The signature is always saved even when email fails — check the debug card below for the last mailer error."
+msgstr ""
+
+#: admin/views/settings/help.php:95
+msgid "Method"
+msgstr ""
+
+#: admin/views/settings/help.php:96
+msgid "Use when"
+msgstr ""
+
+#: admin/views/settings/help.php:97
+msgid "Requires"
+msgstr ""
+
+#: admin/views/settings/help.php:103
+msgid "Quick start. Your host sends mail through PHP."
+msgstr ""
+
+#: admin/views/settings/help.php:104
+msgid "Nothing extra (deliverability depends on your host)."
+msgstr ""
+
+#: admin/views/settings/help.php:108
+msgid "You have SMTP credentials (Mailgun, SendGrid, Postmark, your provider…)."
+msgstr ""
+
+#: admin/views/settings/help.php:109
+msgid "Host, port, encryption, username, password."
+msgstr ""
+
+#: admin/views/settings/help.php:112
+msgid "API"
+msgstr ""
+
+#: admin/views/settings/help.php:113
+msgid "Mailgun or SendGrid API key — skips SMTP configuration entirely."
+msgstr ""
+
+#: admin/views/settings/help.php:114
+msgid "API key (+ Mailgun domain)."
+msgstr ""
+
+#: admin/views/settings/help.php:119
+msgid "Deliverability checklist: send From an address on a domain you control, publish SPF and DKIM records, then add a DMARC policy."
+msgstr ""
+
+#: admin/views/settings/help.php:120
+msgid "Large lists: newsletters send synchronously and save progress per batch. For thousands of signers, prefer sending from a dedicated mailing tool."
+msgstr ""
+
+#: admin/views/settings/help.php:121
+msgid "Tip: after saving email settings, use “Save and Send Test Email” (Email tab) — the result notice tells you exactly what happened."
+msgstr ""
+
+#: admin/views/settings/help.php:124
+msgid "Short.io guide"
+msgstr ""
+
+#: admin/views/settings/help.php:126
+msgid "Requirements: a Short.io account with a domain connected (branded short domains need a paid plan; the free plan can use the shared short.io domain with the API)."
+msgstr ""
+
+#. translators: %s: link to the Short.io API keys page
+#: admin/views/settings/help.php:131
+#, php-format
+msgid "Get a secret API key from %s, enter your short domain (without https://), enable the integration, then use “Test connection”."
+msgstr ""
+
+#: admin/views/settings/help.php:136
+msgid "Auto-create makes a short link when a petition is first published; the custom slug field (in the petition’s Short.io box) overrides it. “Sync with the WordPress slug” keeps the two aligned on save."
+msgstr ""
+
+#: admin/views/settings/help.php:137
+msgid "Use for sharing: when enabled, share buttons, signer success messages, and {petition_url} email tokens use the short URL. It is only used while Short.io stays configured."
+msgstr ""
+
+#: admin/views/settings/help.php:138
+msgid "QR codes are generated by Short.io on demand (“Refresh QR” in the petition’s Short.io box) and can be downloaded or printed."
+msgstr ""
+
+#: admin/views/settings/help.php:141
+msgid "Troubleshooting & FAQ"
+msgstr ""
+
+#: admin/views/settings/help.php:143
+msgid "“You’ve already signed this petition.”"
+msgstr ""
+
+#: admin/views/settings/help.php:144
+msgid "One email address can sign each petition once. Manage records under Supporters."
+msgstr ""
+
+#: admin/views/settings/help.php:146
+msgid "“Too many submissions. Please try again later.”"
+msgstr ""
+
+#: admin/views/settings/help.php:147
+msgid "Rate limit: 5 signatures per hour per IP address. A hidden bot-protection field and a minimum fill time also guard the form. Developers can tune both with the jtc_rate_limit_max / jtc_rate_limit_window filters."
+msgstr ""
+
+#: admin/views/settings/help.php:149
+msgid "Signing fails after a while on cached pages."
+msgstr ""
+
+#: admin/views/settings/help.php:150
+msgid "Security tokens expire after 12–24 hours. If your site serves full-page caches for longer than that, exclude petition pages from HTML caching."
+msgstr ""
+
+#: admin/views/settings/help.php:152
+msgid "Behind a proxy/CDN and the rate limit treats everyone as one visitor?"
+msgstr ""
+
+#: admin/views/settings/help.php:153
+msgid "By default only REMOTE_ADDR is trusted (spoof-proof). For Cloudflare or a reverse proxy, define JTC_TRUST_PROXY_HEADERS as true in wp-config.php so the real visitor IP is used."
+msgstr ""
+
+#: admin/views/settings/help.php:155
+msgid "Dark mode isn’t showing."
+msgstr ""
+
+#: admin/views/settings/help.php:156
+msgid "Every preset ships a dark palette, applied automatically for prefers-color-scheme: dark and for themes that set body.dark / body[data-theme=\"dark\"]."
+msgstr ""
+
+#: admin/views/settings/help.php:158
+msgid "The petition clashes with my theme’s fonts."
+msgstr ""
+
+#. translators: %s: link to the Appearance tab
+#: admin/views/settings/help.php:163
+#, php-format
+msgid "Font source defaults to “inherit” so your theme’s typography wins. Override it under %s (Layout & Style)."
+msgstr ""
+
+#: admin/views/settings/help.php:169
+msgid "Customizing the petition layout more deeply."
+msgstr ""
+
+#: admin/views/settings/help.php:170
+msgid "Copy templates/single-jtc_petition.php into your theme as single-jtc_petition.php and edit freely; all styling uses --jtc-* CSS variables."
+msgstr ""
+
+#: admin/views/settings/help.php:173
+msgid "Debug information"
+msgstr ""
+
+#: admin/views/settings/help.php:178
+msgid "Copy debug info"
+msgstr ""
+
+#: admin/views/settings/integrations.php:19
+msgid "Short.io Links"
+msgstr ""
+
+#: admin/views/settings/integrations.php:20
+msgid "Create branded short links and QR codes for petitions using your Short.io custom domain."
+msgstr ""
+
+#: admin/views/settings/integrations.php:24
+msgid "Enable Short.io"
+msgstr ""
+
+#: admin/views/settings/integrations.php:29
+msgid "Enable Short.io short links for petitions"
+msgstr ""
+
+#: admin/views/settings/integrations.php:34
+msgid "Short domain"
+msgstr ""
+
+#: admin/views/settings/integrations.php:39
+msgid "Use the custom domain already connected in Short.io, without https://."
+msgstr ""
+
+#: admin/views/settings/integrations.php:43
+msgid "Secret API key"
+msgstr ""
+
+#. translators: %s: last 4 characters of the saved key
+#: admin/views/settings/integrations.php:54
+#, php-format
+msgid "A key is saved (%s). Leave blank to keep it."
+msgstr ""
+
+#. translators: %s: link to the Short.io API keys page
+#: admin/views/settings/integrations.php:65
+#, php-format
+msgid "Create a secret API key in %s."
+msgstr ""
+
+#: admin/views/settings/integrations.php:73
+msgid "New petitions"
+msgstr ""
+
+#: admin/views/settings/integrations.php:78
+msgid "Automatically create a short link when a petition is published"
+msgstr ""
+
+#: admin/views/settings/integrations.php:80
+msgid "If no custom slug is set, Short.io will generate one automatically."
+msgstr ""
+
+#: admin/views/settings/integrations.php:84
+msgid "Default sharing URL"
+msgstr ""
+
+#: admin/views/settings/integrations.php:89
+msgid "Use the Short.io URL for public share buttons, signer success sharing, and petition email URL tokens when available"
+msgstr ""
+
+#: admin/views/settings/integrations.php:91
+msgid "Only used while Short.io stays enabled and configured."
+msgstr ""
+
+#: admin/views/settings/integrations.php:96
+msgid "Connection"
+msgstr ""
+
+#: admin/views/settings/integrations.php:98
+msgid "Save your settings first, then test the connection. The test only lists your domains — nothing is changed."
+msgstr ""
+
+#: admin/views/settings/integrations.php:102
+msgid "Test connection"
+msgstr ""
+
+#: admin/views/settings/integrations.php:106
+msgid "Enable the integration and save a domain + API key to test."
+msgstr ""
+
+#: includes/class-jtc-form-handler.php:30
+msgid "Security check failed. Please refresh and try again."
+msgstr ""
+
+#: includes/class-jtc-form-handler.php:36
+#: includes/class-jtc-short-io.php:87
+#: templates/single-jtc_petition.php:42
+msgid "Petition not found."
+msgstr ""
+
+#: includes/class-jtc-form-handler.php:42
+msgid "Could not process the form. Please try again."
+msgstr ""
+
+#: includes/class-jtc-form-handler.php:53
+msgid "Too many submissions. Please try again later."
+msgstr ""
+
+#: includes/class-jtc-form-handler.php:63
+msgid "First name is required."
+msgstr ""
+
+#: includes/class-jtc-form-handler.php:64
+msgid "Last name is required."
+msgstr ""
+
+#: includes/class-jtc-form-handler.php:65
+msgid "A valid email address is required."
+msgstr ""
+
+#: includes/class-jtc-form-handler.php:86
+#: includes/class-jtc-form-handler.php:114
+#: includes/class-jtc-form-handler.php:128
+msgid "You've already signed this petition. Thank you for your support!"
+msgstr ""
+
+#: includes/class-jtc-form-handler.php:131
+msgid "Could not save your signature. Please try again."
+msgstr ""
+
+#: includes/class-jtc-form-handler.php:162
+#: includes/class-jtc-shortcode.php:134
+msgid "Thank you for signing!"
+msgstr ""
+
+#. translators: %s form field label
+#: includes/class-jtc-form-handler.php:248
+#: includes/class-jtc-form-handler.php:258
+#: includes/class-jtc-form-handler.php:264
+#: includes/class-jtc-form-handler.php:273
+#: includes/class-jtc-form-handler.php:279
+#, php-format
+msgid "%s is required."
+msgstr ""
+
+#. translators: %s form field label
+#: includes/class-jtc-form-handler.php:271
+#, php-format
+msgid "%s must be a valid email address."
+msgstr ""
+
+#: includes/class-jtc-form-handler.php:316
+#: includes/class-jtc-shortcode.php:265
+msgid "ago"
+msgstr ""
+
+#. translators: %s petition title
+#: includes/class-jtc-mailer.php:83
+#, php-format
+msgid "[JTC] New signature on \"%s\""
+msgstr ""
+
+#. translators: 1 name, 2 email, 3 petition title, 4 admin URL
+#: includes/class-jtc-mailer.php:87
+#, php-format
+msgid ""
+"%1$s %2$s (%3$s) just signed \"%4$s\".\n"
+"\n"
+"View all supporters: %5$s"
+msgstr ""
+
+#: includes/class-jtc-mailer.php:194
+msgid "Recipient email address is invalid."
+msgstr ""
+
+#: includes/class-jtc-mailer.php:256
+msgid "WordPress could not send the email."
+msgstr ""
+
+#: includes/class-jtc-mailer.php:285
+msgid "API key is missing."
+msgstr ""
+
+#: includes/class-jtc-mailer.php:297
+msgid "Selected API provider is not supported."
+msgstr ""
+
+#. translators: %d HTTP response code
+#: includes/class-jtc-mailer.php:333
+#, php-format
+msgid "SendGrid returned HTTP %d."
+msgstr ""
+
+#: includes/class-jtc-mailer.php:342
+msgid "Mailgun domain is missing."
+msgstr ""
+
+#. translators: 1 HTTP response code, 2 API response message
+#: includes/class-jtc-mailer.php:382
+#, php-format
+msgid "Mailgun returned HTTP %1$d. %2$s"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:59
+msgid "Add Petition"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:61
+msgid "Edit Petition"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:62
+msgid "New Petition"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:63
+msgid "View Petition"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:64
+msgid "Search Petitions"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:65
+msgid "No petitions found."
+msgstr ""
+
+#: includes/class-jtc-post-types.php:66
+msgid "No petitions in trash."
+msgstr ""
+
+#: includes/class-jtc-post-types.php:97
+msgid "Image"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:99
+msgid "Signatures"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:100
+msgid "Shortcode"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:116
+msgid "No image"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:152
+msgid "Signature Form Fields"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:161
+msgid "Petition Settings"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:170
+msgid "Short.io Link"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:179
+msgid "Petition Stats"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:198
+msgid "First Name, Last Name, and Email are always collected and cannot be removed. Add any extra fields below."
+msgstr ""
+
+#: includes/class-jtc-post-types.php:204
+#: includes/class-jtc-post-types.php:234
+msgid "Label"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:205
+#: includes/class-jtc-post-types.php:235
+msgid "Type"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:206
+#: includes/class-jtc-post-types.php:239
+msgid "Required"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:207
+msgid "Built-in"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:213
+msgid "First Name"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:214
+msgid "Last Name"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:215
+msgid "Email Address"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:223
+msgid "locked"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:236
+msgid "Placeholder"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:237
+msgid "Options"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:238
+msgid "select fields only"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:240
+msgid "Remove"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:253
+msgid "+ Add Field"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:276
+msgid "Configure Short.io in Join the Cause settings before creating petition short links."
+msgstr ""
+
+#: includes/class-jtc-post-types.php:281
+msgid "Custom short slug"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:285
+msgid "This pushes a slug to Short.io when you create or update the link. Leave blank to let Short.io generate one."
+msgstr ""
+
+#: includes/class-jtc-post-types.php:291
+msgid "Sync with the WordPress petition slug"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:293
+msgid "When checked, saving this petition pushes the WordPress slug to Short.io. If the slug changes in Short.io later, the site pulls the latest Short.io URL before sharing."
+msgstr ""
+
+#: includes/class-jtc-post-types.php:298
+msgid "Update short link"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:298
+msgid "Create short link"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:302
+msgid "Pull from Short.io"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:305
+msgid "Refresh QR"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:312
+msgid "Current Short.io URL"
+msgstr ""
+
+#. translators: %s Short.io slug
+#: includes/class-jtc-post-types.php:319
+#, php-format
+msgid "Current Short.io slug: %s"
+msgstr ""
+
+#. translators: %s sync date/time
+#: includes/class-jtc-post-types.php:330
+#, php-format
+msgid "Last synced: %s"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:341
+msgid "Short link QR code"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:344
+#: includes/class-jtc-shortcode.php:290
+msgid "Download QR"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:347
+msgid "Print"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:434
+msgid "Override the global defaults for this petition only."
+msgstr ""
+
+#: includes/class-jtc-post-types.php:447
+msgid "Show count"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:451
+msgid "Display total signatures"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:456
+msgid "Recent signers"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:460
+msgid "Show recent signer names (adds name-display consent to form)"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:465
+msgid "Allow comments"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:469
+msgid "Enable WordPress comments on this petition"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:479
+msgid "Show message"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:524
+msgid "Stats available after first save."
+msgstr ""
+
+#: includes/class-jtc-post-types.php:548
+msgid "signature"
+msgid_plural "signatures"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: 1 first name, 2 last name
+#: includes/class-jtc-post-types.php:556
+#, php-format
+msgid "Latest: %1$s %2$s"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:568
+msgid "View all supporters →"
+msgstr ""
+
+#: includes/class-jtc-post-types.php:692
+msgid "Short.io link pulled from Short.io."
+msgstr ""
+
+#: includes/class-jtc-post-types.php:703
+msgid "Short.io link synced."
+msgstr ""
+
+#: includes/class-jtc-post-types.php:714
+msgid "Short.io QR code refreshed."
+msgstr ""
+
+#: includes/class-jtc-short-io.php:37
+#: includes/class-jtc-short-io.php:83
+msgid "Short.io is not configured."
+msgstr ""
+
+#: includes/class-jtc-short-io.php:63
+msgid "The configured Short.io domain was not found for this API key."
+msgstr ""
+
+#: includes/class-jtc-short-io.php:92
+msgid "Could not determine the petition URL."
+msgstr ""
+
+#: includes/class-jtc-short-io.php:135
+msgid "Create a Short.io link before fetching a QR code."
+msgstr ""
+
+#: includes/class-jtc-short-io.php:164
+msgid "Short.io could not generate a QR code."
+msgstr ""
+
+#: includes/class-jtc-short-io.php:222
+msgid "Short.io could not find the saved short link."
+msgstr ""
+
+#. translators: 1 short domain, 2 number of domains on the account
+#: includes/class-jtc-short-io.php:270
+#, php-format
+msgid "Connected. Domain \"%1$s\" found (account has %2$d domain(s))."
+msgstr ""
+
+#. translators: 1 short domain, 2 number of domains on the account
+#: includes/class-jtc-short-io.php:281
+#, php-format
+msgid "Connected, but the domain \"%1$s\" was not found on this account (%2$d domain(s) visible)."
+msgstr ""
+
+#: includes/class-jtc-short-io.php:332
+msgid "Short.io API request failed."
+msgstr ""
+
+#: includes/class-jtc-short-io.php:338
+msgid "Short.io returned an unexpected response."
+msgstr ""
+
+#: includes/class-jtc-short-io.php:402
+#: includes/class-jtc-short-io.php:415
+msgid "Short.io returned a file that is not a PNG image."
+msgstr ""
+
+#. translators: %s petition title
+#: includes/class-jtc-short-io.php:428
+#, php-format
+msgid "Short link QR - %s"
+msgstr ""
+
+#: includes/class-jtc-shortcode.php:122
+msgid "Signing…"
+msgstr ""
+
+#: includes/class-jtc-shortcode.php:125
+msgid "Share this petition:"
+msgstr ""
+
+#: includes/class-jtc-shortcode.php:128
+msgid "Please enter a valid email address."
+msgstr ""
+
+#: includes/class-jtc-shortcode.php:129
+msgid "This field is required."
+msgstr ""
+
+#. translators: %d: percentage of goal reached
+#: includes/class-jtc-shortcode.php:131
+#: includes/class-jtc-shortcode.php:327
+#, php-format
+msgid "%d%% of goal reached"
+msgstr ""
+
+#. translators: %s: signature count, e.g. "1,248"
+#: includes/class-jtc-shortcode.php:133
+#: includes/class-jtc-shortcode.php:377
+#, php-format
+msgid "— %s signed"
+msgstr ""
+
+#: includes/class-jtc-shortcode.php:135
+msgid "Copy this shortcode to embed the petition:"
+msgstr ""
+
+#: includes/class-jtc-shortcode.php:138
+msgid "Link copied to clipboard."
+msgstr ""
+
+#: includes/class-jtc-shortcode.php:139
+msgid "Text selected. Press Ctrl+C (or Cmd+C) to copy."
+msgstr ""
+
+#: includes/class-jtc-shortcode.php:216
+msgid "Petition image"
+msgstr ""
+
+#: includes/class-jtc-shortcode.php:247
+#: includes/class-jtc-shortcode.php:249
+msgid "Recent supporters"
+msgstr ""
+
+#: includes/class-jtc-shortcode.php:276
+#: includes/class-jtc-shortcode.php:278
+msgid "Share this petition"
+msgstr ""
+
+#: includes/class-jtc-shortcode.php:287
+msgid "Petition short link QR code"
+msgstr ""
+
+#: includes/class-jtc-shortcode.php:311
+msgid "Sign the petition"
+msgstr ""
+
+#. translators: %s = formatted goal number
+#: includes/class-jtc-shortcode.php:344
+#, php-format
+msgid "Goal: %s"
+msgstr ""
+
+#: includes/class-jtc-shortcode.php:403
+msgid "Signature form"
+msgstr ""
+
+#: includes/class-jtc-shortcode.php:407
+msgid "This form needs JavaScript to submit. Please enable JavaScript, or contact the site to sign in another way."
+msgstr ""
+
+#: includes/class-jtc-shortcode.php:440
+msgid "Last name"
+msgstr ""
+
+#: includes/class-jtc-shortcode.php:461
+msgid "Email address"
+msgstr ""
+
+#: includes/class-jtc-shortcode.php:532
+msgid "— Select —"
+msgstr ""
+
+#: includes/class-jtc-shortcode.php:567
+msgid "Show my name in the list of recent supporters"
+msgstr ""
+
+#: includes/class-jtc-shortcode.php:584
+msgid "Website"
+msgstr ""
+
+#: includes/class-jtc-shortcode.php:626
+msgid "Share on X (Twitter)"
+msgstr ""
+
+#: includes/class-jtc-shortcode.php:636
+msgid "Embed"
+msgstr ""
+
+#: join-the-cause.php:719
+msgid "Evergreen"
+msgstr ""
+
+#: join-the-cause.php:751
+msgid "Civic Red"
+msgstr ""
+
+#: join-the-cause.php:783
+msgid "Trust Blue"
+msgstr ""
+
+#: join-the-cause.php:815
+msgid "Organizing Teal"
+msgstr ""
+
+#: join-the-cause.php:847
+msgid "Community Purple"
+msgstr ""
+
+#: blocks/petition/index.js:79
+msgid "Create a new petition"
+msgstr ""
+
+#: blocks/petition/index.js:108
+msgid "Could not load petitions."
+msgstr ""
+
+#: blocks/petition/index.js:124
+msgid "Loading petitions…"
+msgstr ""
+
+#: blocks/petition/index.js:141
+msgid "No published petitions found yet."
+msgstr ""
+
+#: blocks/petition/index.js:162
+msgid "Embed a petition with its signature form, progress bar, and share tools."
+msgstr ""
+
+#: blocks/petition/index.js:166
+msgid "petition"
+msgstr ""
+
+#: blocks/petition/index.js:167
+msgid "sign"
+msgstr ""
+
+#: blocks/petition/index.js:168
+msgid "cause"
+msgstr ""
+
+#: blocks/petition/index.js:198
+msgid "Show title"
+msgstr ""
+
+#: blocks/petition/index.js:199
+msgid "Render the petition title as an H1 — use it when this block sits at the top of the page and the page has no title of its own."
+msgstr ""
+
+#: blocks/petition/index.js:217
+msgid "Select a petition in the block settings to embed it here. Nothing to choose from yet? Create a petition first, then pick it here."
+msgstr ""
+
+#: blocks/petition/block.json
+msgctxt "block title"
+msgid "Petition"
+msgstr ""
+
+#: blocks/petition/block.json
+msgctxt "block description"
+msgid "Embed a petition with its signature form, progress bar, and share tools."
+msgstr ""
+
+#: blocks/petition/block.json
+msgctxt "block keyword"
+msgid "petition"
+msgstr ""
+
+#: blocks/petition/block.json
+msgctxt "block keyword"
+msgid "sign"
+msgstr ""
+
+#: blocks/petition/block.json
+msgctxt "block keyword"
+msgid "cause"
+msgstr ""

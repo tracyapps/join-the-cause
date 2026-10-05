@@ -1,6 +1,6 @@
 <?php
 /**
- * Newsletter page — compose new / edit draft, view archive.
+ * Newsletter page — compose new / edit draft, send test, view archive.
  *
  * @package JoinTheCause
  */
@@ -12,8 +12,8 @@ global $wpdb;
 $table = $wpdb->prefix . 'jtc_newsletters';
 
 // Are we editing a specific draft?
-$edit_id     = isset( $_GET['edit'] ) ? absint( $_GET['edit'] ) : 0;
-$editing     = null;
+$edit_id = isset( $_GET['edit'] ) ? absint( $_GET['edit'] ) : 0;
+$editing = null;
 
 if ( $edit_id ) {
 	$editing = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d AND status = 'draft'", $edit_id ), ARRAY_A );
@@ -28,6 +28,23 @@ $all_petitions = get_posts( [
 	'order'          => 'ASC',
 ] );
 
+// Recipient counts (for the "will send to" hint + JS confirm dialog).
+$recipient_counts = [
+	0 => (int) $wpdb->get_var( "SELECT COUNT(DISTINCT email) FROM {$wpdb->prefix}jtc_supporters" ), // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+];
+
+foreach ( $all_petitions as $p ) {
+	$recipient_counts[ $p->ID ] = (int) $wpdb->get_var(
+		$wpdb->prepare(
+			"SELECT COUNT(DISTINCT email) FROM {$wpdb->prefix}jtc_supporters WHERE petition_id = %d",
+			$p->ID
+		)
+	);
+}
+
+$editing_petition = (int) ( $editing['petition_id'] ?? 0 );
+$selected_count   = $recipient_counts[ $editing_petition ] ?? $recipient_counts[0];
+
 // Archive list.
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- no user input; table names are trusted $wpdb->prefix values.
 $archive = $wpdb->get_results(
@@ -37,9 +54,23 @@ $archive = $wpdb->get_results(
 	 ORDER BY nl.created_at DESC LIMIT 50",
 	ARRAY_A
 );
+
+$interrupted = false;
+foreach ( $archive as $nl ) {
+	if ( 'sending' === $nl['status'] ) {
+		$interrupted = true;
+		break;
+	}
+}
 ?>
 <div class="wrap jtc-newsletter-wrap">
 	<h1><?php esc_html_e( 'Newsletter', 'join-the-cause' ); ?></h1>
+
+	<?php if ( $interrupted ) : ?>
+	<div class="notice notice-warning inline">
+		<p><?php esc_html_e( 'A previous newsletter send looks interrupted. Its progress is saved in the archive below; sending again starts a fresh pass.', 'join-the-cause' ); ?></p>
+	</div>
+	<?php endif; ?>
 
 	<!-- ── Compose form ──────────────────────────────────────────────────── -->
 	<div class="jtc-nl-compose">
@@ -56,10 +87,11 @@ $archive = $wpdb->get_results(
 					<th scope="row"><label for="jtc-nl-petition"><?php esc_html_e( 'Send to signers of', 'join-the-cause' ); ?></label></th>
 					<td>
 						<select id="jtc-nl-petition" name="jtc_nl_petition_id" aria-required="true">
-							<option value="0"><?php esc_html_e( '— All petitions —', 'join-the-cause' ); ?></option>
+							<option value="0" data-recipients="<?php echo esc_attr( $recipient_counts[0] ); ?>"><?php esc_html_e( '— All petitions —', 'join-the-cause' ); ?></option>
 							<?php foreach ( $all_petitions as $p ) : ?>
 							<option value="<?php echo esc_attr( $p->ID ); ?>"
-								<?php selected( $editing['petition_id'] ?? 0, $p->ID ); ?>>
+								data-recipients="<?php echo esc_attr( $recipient_counts[ $p->ID ] ); ?>"
+								<?php selected( $editing_petition, $p->ID ); ?>>
 								<?php echo esc_html( $p->post_title ); ?>
 							</option>
 							<?php endforeach; ?>
@@ -98,14 +130,33 @@ $archive = $wpdb->get_results(
 			</table>
 
 			<div class="jtc-nl-actions">
-				<?php submit_button( __( 'Save as Draft', 'join-the-cause' ), 'secondary', 'jtc_newsletter_action', false, [ 'value' => 'save_draft' ] ); ?>
+				<button type="submit" name="jtc_newsletter_action" value="save_draft" class="button button-secondary">
+					<?php esc_html_e( 'Save as Draft', 'join-the-cause' ); ?>
+				</button>
+
+				<button type="submit" name="jtc_newsletter_action" value="send_test" class="button button-secondary">
+					<?php esc_html_e( 'Send Test to Me', 'join-the-cause' ); ?>
+				</button>
 
 				<button type="submit" name="jtc_newsletter_action" value="send"
-					class="button button-primary jtc-send-btn"
-					onclick="return confirm('<?php echo esc_js( __( 'Send this newsletter now? This cannot be undone.', 'join-the-cause' ) ); ?>')">
+					class="button button-primary jtc-send-btn">
 					<?php esc_html_e( 'Send Now', 'join-the-cause' ); ?>
 				</button>
+
+				<span id="jtc-nl-recipients" class="description" role="status" data-count="<?php echo esc_attr( $selected_count ); ?>">
+					<?php
+					printf(
+						/* translators: %s: number of recipients */
+						esc_html( _n( 'Will send to %s recipient.', 'Will send to %s recipients.', $selected_count, 'join-the-cause' ) ),
+						esc_html( number_format_i18n( $selected_count ) )
+					);
+					?>
+				</span>
 			</div>
+
+			<p class="description">
+				<?php esc_html_e( 'Sending runs synchronously and saves progress per batch, so an interruption never loses the sent count. For very large lists, prefer a dedicated mailing service.', 'join-the-cause' ); ?>
+			</p>
 		</form>
 	</div>
 
@@ -132,14 +183,6 @@ $archive = $wpdb->get_results(
 				$is_sent   = 'sent' === $nl['status'];
 				$date_col  = $is_sent ? $nl['sent_at'] : $nl['created_at'];
 				$edit_link = add_query_arg( [ 'page' => 'jtc-newsletter', 'edit' => $nl['id'] ], admin_url( 'admin.php' ) );
-				$del_link  = '';
-				if ( ! $is_sent ) {
-					$del_link = add_query_arg( [
-						'page'                  => 'jtc-newsletter',
-						'jtc_newsletter_action' => 'delete',
-						'jtc_nl_id'             => $nl['id'],
-					], admin_url( 'admin.php' ) );
-				}
 			?>
 			<tr>
 				<td><strong><?php echo esc_html( $nl['subject'] ); ?></strong></td>
@@ -149,7 +192,7 @@ $archive = $wpdb->get_results(
 						<?php echo esc_html( ucfirst( $nl['status'] ) ); ?>
 					</span>
 				</td>
-				<td><?php echo $is_sent ? esc_html( number_format_i18n( (int) $nl['recipients_count'] ) ) : '—'; ?></td>
+				<td><?php echo esc_html( number_format_i18n( (int) $nl['recipients_count'] ) ); ?></td>
 				<td>
 					<?php if ( $date_col ) : ?>
 					<time datetime="<?php echo esc_attr( $date_col ); ?>">
@@ -160,7 +203,6 @@ $archive = $wpdb->get_results(
 				<td>
 					<?php if ( ! $is_sent ) : ?>
 					<a href="<?php echo esc_url( $edit_link ); ?>"><?php esc_html_e( 'Edit', 'join-the-cause' ); ?></a>
-					<?php if ( $del_link ) : ?>
 					 |
 					<form method="post" action="" style="display:inline;">
 						<?php wp_nonce_field( 'jtc_newsletter_action', 'jtc_newsletter_nonce' ); ?>
@@ -171,7 +213,6 @@ $archive = $wpdb->get_results(
 							<?php esc_html_e( 'Delete', 'join-the-cause' ); ?>
 						</button>
 					</form>
-					<?php endif; ?>
 					<?php else : ?>
 					<span class="description"><?php esc_html_e( 'Sent', 'join-the-cause' ); ?></span>
 					<?php endif; ?>

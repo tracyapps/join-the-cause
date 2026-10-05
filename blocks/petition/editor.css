@@ -1,0 +1,28 @@
+/**
+ * Editor-only styles for the jtc/petition block.
+ *
+ * The front-end look inside the editor canvas comes from the plugin's public
+ * stylesheet + CSS variables, which JTC_Block::enqueue_editor_canvas_assets()
+ * attaches to the `enqueue_block_assets` collection (see class-jtc-block.php).
+ * This file only adds editor affordances.
+ */
+
+/* The canvas preview is static (public JS does not run in the editor), so
+   keep the form's controls from capturing clicks or navigating the canvas
+   while an editor is selecting/fiddling with the block. */
+.wp-block-jtc-petition .jtc-form,
+.wp-block-jtc-petition .jtc-share a,
+.wp-block-jtc-petition .jtc-share button {
+	pointer-events: none;
+}
+
+/* Inline hints (picker empty/loading states, canvas placeholder link). */
+.jtc-block-hint {
+	margin: 8px 0 0;
+}
+
+.jtc-block-hint .components-spinner {
+	float: none;
+	margin: 0 6px 0 0;
+	vertical-align: -2px;
+}

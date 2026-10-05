@@ -29,6 +29,58 @@ class JTC_Activator {
 		flush_rewrite_rules();
 	}
 
+	// ─── One-time migrations ────────────────────────────────────────────────
+
+	/**
+	 * Maps a stored preset slug to a current, valid slug.
+	 * Legacy or renamed slugs that no longer exist fall back to the default
+	 * preset, so renamed keys migrate cleanly without keeping the old string
+	 * anywhere in the codebase.
+	 *
+	 * @param string   $stored      Value currently stored in the option.
+	 * @param string[] $valid_slugs Current preset keys.
+	 */
+	public static function sanitize_stored_preset_slug( string $stored, array $valid_slugs ): string {
+		if ( in_array( $stored, $valid_slugs, true ) ) {
+			return $stored;
+		}
+
+		return 'evergreen';
+	}
+
+	/**
+	 * One-time, idempotent migration for installs that stored a preset slug
+	 * which has since been renamed. Runs on every request until flagged once.
+	 */
+	public static function maybe_migrate(): void {
+		if ( get_option( 'jtc_trace_migration' ) ) {
+			return;
+		}
+
+		$valid  = array_keys( jtc_get_preset_themes() );
+		$stored = (string) get_option( 'jtc_preset_theme', '' );
+		$fixed  = self::sanitize_stored_preset_slug( $stored, $valid );
+
+		if ( $fixed !== $stored ) {
+			update_option( 'jtc_preset_theme', $fixed );
+		}
+
+		update_option( 'jtc_trace_migration', 1 );
+	}
+
+	/**
+	 * Adds any missing DB schema changes (e.g. the unique signature index)
+	 * to existing installs. dbDelta failures on legacy duplicate data are
+	 * non-fatal: inserts still run with graceful duplicate handling.
+	 */
+	public static function maybe_upgrade_schema(): void {
+		if ( JTC_DB_VERSION === (string) get_option( 'jtc_db_version', '' ) ) {
+			return;
+		}
+
+		self::create_tables();
+	}
+
 	// ─── DB tables ───────────────────────────────────────────────────────────
 
 	private static function create_tables(): void {
@@ -55,7 +107,7 @@ class JTC_Activator {
 			signed_at     datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY  (id),
 			KEY petition_id (petition_id),
-			KEY email (email(100))
+			UNIQUE KEY petition_email (petition_id, email(191))
 		) {$charset};";
 
 		/**
@@ -81,7 +133,7 @@ class JTC_Activator {
 		dbDelta( $sql_supporters );
 		dbDelta( $sql_newsletters );
 
-		update_option( 'jtc_db_version', JTC_VERSION );
+		update_option( 'jtc_db_version', JTC_DB_VERSION );
 	}
 
 	// ─── Default options ─────────────────────────────────────────────────────
@@ -94,7 +146,7 @@ class JTC_Activator {
 		$scalar_defaults = [
 			// Appearance.
 			'jtc_color_mode'             => 'preset',
-			'jtc_preset_theme'           => 'wcfjip',
+			'jtc_preset_theme'           => 'evergreen',
 			'jtc_custom_primary'         => '#2d6a2d',
 			'jtc_custom_secondary'       => '#1a3d1a',
 			'jtc_custom_accent'          => '#f0faf0',
@@ -103,6 +155,7 @@ class JTC_Activator {
 			'jtc_custom_page_bg'         => '#f6f8f4',
 			'jtc_custom_surface'         => '#ffffff',
 			'jtc_custom_surface_alt'     => '#f3f7f0',
+			'jtc_custom_border'          => '#d8e2d2',
 			// General language.
 			'jtc_privacy_notice'         => 'By signing, you agree to let us contact you about this petition. We will never share your information with third parties.',
 			'jtc_terms_of_service'       => '',
@@ -125,6 +178,13 @@ class JTC_Activator {
 			'jtc_welcome_email_body'     => "Dear {first_name},\n\nThank you for signing \"{petition_title}\". Your support makes a real difference.\n\nBest,\n{site_name}",
 			'jtc_admin_notify_enabled'   => 1,
 			'jtc_admin_notify_email'     => get_option( 'admin_email' ),
+			// Short.io.
+			'jtc_shortio_enabled'        => 0,
+			'jtc_shortio_api_key'        => '',
+			'jtc_shortio_domain'         => '',
+			'jtc_shortio_domain_id'      => 0,
+			'jtc_shortio_auto_create'    => 0,
+			'jtc_shortio_use_for_sharing' => 0,
 		];
 
 		foreach ( $scalar_defaults as $key => $value ) {
@@ -142,5 +202,8 @@ class JTC_Activator {
 			'share_buttons'       => [ 'facebook', 'twitter', 'copy', 'embed' ],
 			'goal'                => 0,
 		] );
+
+		// Layout & Style (single serialized, versioned option).
+		add_option( 'jtc_style', jtc_style_defaults() );
 	}
 }

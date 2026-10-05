@@ -25,6 +25,7 @@ class JTC_Admin {
 		add_action( 'admin_init',             [ $this, 'handle_newsletter_actions' ] );
 		add_action( 'admin_init',             [ $this, 'handle_supporter_actions' ] );
 		add_action( 'admin_notices',          [ $this, 'admin_notices' ] );
+		add_action( 'wp_ajax_jtc_shortio_test', [ $this, 'ajax_shortio_test' ] );
 
 		// Inline-copy shortcodes in the petition list.
 		add_action( 'admin_footer-edit.php',  [ $this, 'shortcode_copy_script' ] );
@@ -33,7 +34,6 @@ class JTC_Admin {
 	// ─── Menus ────────────────────────────────────────────────────────────────
 
 	public function register_menus(): void {
-		// Top-level icon: a simple leaf/cause SVG as base64.
 		$icon = 'dashicons-heart';
 
 		add_menu_page(
@@ -91,9 +91,9 @@ class JTC_Admin {
 			'join-the-cause_page_jtc-newsletter',
 		];
 
-		$is_jtc     = in_array( $hook, $jtc_pages, true );
-		$is_cpt     = in_array( $hook, [ 'post.php', 'post-new.php' ], true ) &&
-		              isset( $_GET['post_type'] ) ? get_post_type( (int) ( $_GET['post'] ?? 0 ) ) === JTC_CPT : false;
+		$screen = get_current_screen();
+		$is_jtc = in_array( $hook, $jtc_pages, true );
+		$is_cpt = $screen && JTC_CPT === $screen->post_type && in_array( $hook, [ 'post.php', 'post-new.php', 'edit.php' ], true );
 
 		if ( ! $is_jtc && ! $is_cpt ) return;
 
@@ -109,19 +109,41 @@ class JTC_Admin {
 		wp_enqueue_script(
 			'jtc-admin',
 			JTC_PLUGIN_URL . 'admin/js/jtc-admin.js',
-			[ 'jquery', 'wp-color-picker', 'jquery-ui-sortable' ],
+			[ 'jquery', 'wp-color-picker', 'jquery-ui-sortable', 'wp-a11y' ],
 			JTC_VERSION,
 			true
 		);
 
 		wp_localize_script( 'jtc-admin', 'jtcAdmin', [
-			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-			'nonce'   => wp_create_nonce( 'jtc_admin' ),
-			'i18n'    => [
-				'confirmDelete'  => __( 'Are you sure you want to delete this record? This cannot be undone.', 'join-the-cause' ),
-				'confirmSend'    => __( 'Send this newsletter now? This cannot be undone.', 'join-the-cause' ),
-				'copied'         => __( 'Copied!', 'join-the-cause' ),
-				'newField'       => __( 'New Field', 'join-the-cause' ),
+			'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
+			'nonce'     => wp_create_nonce( 'jtc_admin' ),
+			'presets'   => jtc_get_preset_themes(),
+			'styleMaps' => jtc_style_maps(),
+			'i18n'      => [
+				'confirmDelete'      => __( 'Are you sure you want to delete this record? This cannot be undone.', 'join-the-cause' ),
+				/* translators: %d: number of recipients */
+				'confirmSendCount'   => __( 'Send this newsletter now to %d recipients? This cannot be undone.', 'join-the-cause' ),
+				'confirmSend'        => __( 'Send this newsletter now? This cannot be undone.', 'join-the-cause' ),
+				'copied'             => __( 'Copied!', 'join-the-cause' ),
+				'newField'           => __( 'New Field', 'join-the-cause' ),
+				'fieldLabel'         => __( 'Field label', 'join-the-cause' ),
+				'fieldType'          => __( 'Field type', 'join-the-cause' ),
+				'placeholderText'    => __( 'Placeholder text', 'join-the-cause' ),
+				'requiredField'      => __( 'Required field', 'join-the-cause' ),
+				'removeField'        => __( 'Remove this field', 'join-the-cause' ),
+				'dragToReorder'      => __( 'Drag to reorder', 'join-the-cause' ),
+				'moveFieldUp'        => __( 'Move field up', 'join-the-cause' ),
+				'moveFieldDown'      => __( 'Move field down', 'join-the-cause' ),
+				'optionsLabel'       => __( 'Select field options', 'join-the-cause' ),
+				'optionsPlaceholder' => __( 'One option per line', 'join-the-cause' ),
+				'printQrTitle'       => __( 'Print QR', 'join-the-cause' ),
+				'qrAlt'              => __( 'QR code', 'join-the-cause' ),
+				'testingConnection'  => __( 'Testing connection…', 'join-the-cause' ),
+				'errorGeneric'       => __( 'Something went wrong. Please try again.', 'join-the-cause' ),
+				'debugCopied'        => __( 'Debug information copied to clipboard.', 'join-the-cause' ),
+				/* translators: %d: number of recipients */
+				'recipientCount'     => __( '%d recipients', 'join-the-cause' ),
+				'recipientCountOne'  => __( '1 recipient', 'join-the-cause' ),
 			],
 		] );
 
@@ -140,7 +162,7 @@ class JTC_Admin {
 		check_admin_referer( 'jtc_save_settings', 'jtc_settings_nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) wp_die( __( 'Not allowed.', 'join-the-cause' ) );
 
-		$tab = sanitize_key( $_POST['jtc_tab'] ?? 'appearance' );
+		$tab = sanitize_key( wp_unslash( $_POST['jtc_tab'] ?? 'appearance' ) );
 
 		switch ( $tab ) {
 			case 'appearance':
@@ -154,6 +176,10 @@ class JTC_Admin {
 				break;
 			case 'email':
 				$this->save_email();
+				break;
+			case 'integrations':
+			case 'shortio':
+				$this->save_shortio();
 				break;
 		}
 
@@ -169,24 +195,36 @@ class JTC_Admin {
 
 	private function save_appearance(): void {
 		$mode = in_array( $_POST['jtc_color_mode'] ?? '', [ 'preset', 'custom', 'none' ], true )
-			? sanitize_key( $_POST['jtc_color_mode'] )
+			? sanitize_key( wp_unslash( $_POST['jtc_color_mode'] ) )
 			: 'preset';
 		update_option( 'jtc_color_mode', $mode );
 
 		$presets = array_keys( jtc_get_preset_themes() );
 		$preset  = in_array( $_POST['jtc_preset_theme'] ?? '', $presets, true )
-			? sanitize_key( $_POST['jtc_preset_theme'] )
-			: 'wcfjip';
+			? sanitize_key( wp_unslash( $_POST['jtc_preset_theme'] ) )
+			: 'evergreen';
 		update_option( 'jtc_preset_theme', $preset );
 
-		update_option( 'jtc_custom_primary',   sanitize_hex_color( $_POST['jtc_custom_primary']   ?? '' ) ?: '#2d6a2d' );
-		update_option( 'jtc_custom_secondary', sanitize_hex_color( $_POST['jtc_custom_secondary'] ?? '' ) ?: '#1a3d1a' );
-		update_option( 'jtc_custom_accent',    sanitize_hex_color( $_POST['jtc_custom_accent']    ?? '' ) ?: '#f0faf0' );
-		update_option( 'jtc_custom_hero_from', sanitize_hex_color( $_POST['jtc_custom_hero_from'] ?? '' ) ?: '#245e2b' );
-		update_option( 'jtc_custom_hero_to',   sanitize_hex_color( $_POST['jtc_custom_hero_to']   ?? '' ) ?: '#4f8d33' );
-		update_option( 'jtc_custom_page_bg',   sanitize_hex_color( $_POST['jtc_custom_page_bg']   ?? '' ) ?: '#f6f8f4' );
-		update_option( 'jtc_custom_surface',   sanitize_hex_color( $_POST['jtc_custom_surface']   ?? '' ) ?: '#ffffff' );
-		update_option( 'jtc_custom_surface_alt', sanitize_hex_color( $_POST['jtc_custom_surface_alt'] ?? '' ) ?: '#f3f7f0' );
+		$hex_fields = [
+			'jtc_custom_primary'     => '#2d6a2d',
+			'jtc_custom_secondary'   => '#1a3d1a',
+			'jtc_custom_accent'      => '#f0faf0',
+			'jtc_custom_hero_from'   => '#245e2b',
+			'jtc_custom_hero_to'     => '#4f8d33',
+			'jtc_custom_page_bg'     => '#f6f8f4',
+			'jtc_custom_surface'     => '#ffffff',
+			'jtc_custom_surface_alt' => '#f3f7f0',
+			'jtc_custom_border'      => '#d8e2d2',
+		];
+
+		foreach ( $hex_fields as $key => $default ) {
+			$value = sanitize_hex_color( wp_unslash( (string) ( $_POST[ $key ] ?? '' ) ) );
+			update_option( $key, $value ?: $default );
+		}
+
+		// Layout & Style options (single serialized, versioned option).
+		$style = jtc_sanitize_style_options( (array) wp_unslash( $_POST['jtc_style'] ?? [] ) );
+		update_option( 'jtc_style', $style );
 	}
 
 	private function save_general(): void {
@@ -226,7 +264,11 @@ class JTC_Admin {
 
 		// SMTP.
 		update_option( 'jtc_smtp_host',       sanitize_text_field( wp_unslash( $_POST['jtc_smtp_host'] ?? '' ) ) );
-		update_option( 'jtc_smtp_port',       absint( $_POST['jtc_smtp_port'] ?? 587 ) );
+		$smtp_port = absint( wp_unslash( $_POST['jtc_smtp_port'] ?? 587 ) );
+		if ( $smtp_port < 1 || $smtp_port > 65535 ) {
+			$smtp_port = 587; // Real port validation: 1–65535, else back to default.
+		}
+		update_option( 'jtc_smtp_port', $smtp_port );
 		update_option( 'jtc_smtp_username',   sanitize_text_field( wp_unslash( $_POST['jtc_smtp_username'] ?? '' ) ) );
 		update_option( 'jtc_smtp_encryption', in_array( $_POST['jtc_smtp_encryption'] ?? '', [ 'tls', 'ssl', 'none' ], true )
 			? sanitize_key( $_POST['jtc_smtp_encryption'] ) : 'tls' );
@@ -257,6 +299,53 @@ class JTC_Admin {
 		update_option( 'jtc_welcome_email_body',     sanitize_textarea_field( wp_unslash( $_POST['jtc_welcome_email_body'] ?? '' ) ) );
 		update_option( 'jtc_admin_notify_enabled',   ! empty( $_POST['jtc_admin_notify_enabled'] ) ? 1 : 0 );
 		update_option( 'jtc_admin_notify_email',     sanitize_email( wp_unslash( $_POST['jtc_admin_notify_email'] ?? '' ) ) );
+	}
+
+	private function save_shortio(): void {
+		$old_domain = JTC_Short_IO::normalize_domain( (string) get_option( 'jtc_shortio_domain', '' ) );
+		$new_domain = JTC_Short_IO::normalize_domain( wp_unslash( $_POST['jtc_shortio_domain'] ?? '' ) );
+
+		update_option( 'jtc_shortio_enabled', ! empty( $_POST['jtc_shortio_enabled'] ) ? 1 : 0 );
+		update_option( 'jtc_shortio_domain', $new_domain );
+		update_option( 'jtc_shortio_auto_create', ! empty( $_POST['jtc_shortio_auto_create'] ) ? 1 : 0 );
+		update_option( 'jtc_shortio_use_for_sharing', ! empty( $_POST['jtc_shortio_use_for_sharing'] ) ? 1 : 0 );
+
+		if ( $old_domain !== $new_domain ) {
+			delete_option( 'jtc_shortio_domain_id' );
+		}
+
+		if ( ! empty( $_POST['jtc_shortio_api_key'] ) ) {
+			update_option( 'jtc_shortio_api_key', sanitize_text_field( wp_unslash( $_POST['jtc_shortio_api_key'] ) ) );
+			delete_option( 'jtc_shortio_domain_id' );
+		}
+	}
+
+	// ─── Short.io AJAX: test connection ────────────────────────────────────────
+
+	/**
+	 * AJAX: tests the Short.io connection with a harmless read-only request
+	 * (list domains) and reports whether the configured domain is available.
+	 */
+	public function ajax_shortio_test(): void {
+		check_ajax_referer( 'jtc_admin', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Not allowed.', 'join-the-cause' ) ], 403 );
+		}
+
+		$client = new JTC_Short_IO();
+
+		if ( ! $client->is_configured() ) {
+			wp_send_json_error( [ 'message' => __( 'Short.io is not configured yet. Save your API key and short domain first.', 'join-the-cause' ) ], 400 );
+		}
+
+		$result = $client->test_connection();
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( [ 'message' => $result->get_error_message() ], 502 );
+		}
+
+		wp_send_json_success( $result );
 	}
 
 	private function sanitize_mailgun_domain( string $domain ): string {
@@ -350,6 +439,25 @@ class JTC_Admin {
 			}
 		}
 
+		if ( 'send_test' === $action ) {
+			$subject = sanitize_text_field( wp_unslash( $_POST['jtc_nl_subject'] ?? '' ) );
+			$content = wp_kses_post( wp_unslash( $_POST['jtc_nl_content'] ?? '' ) );
+
+			if ( '' === $subject || '' === $content ) {
+				wp_redirect( add_query_arg( [ 'page' => 'jtc-newsletter', 'test_sent' => 'missing' ], admin_url( 'admin.php' ) ) );
+				exit;
+			}
+
+			$user = wp_get_current_user();
+			$to   = is_email( $user->user_email ) ? $user->user_email : get_option( 'admin_email' );
+
+			$mailer = new JTC_Mailer();
+			$ok     = $mailer->send( $to, '[TEST] ' . $subject, $content, true );
+
+			wp_redirect( add_query_arg( [ 'page' => 'jtc-newsletter', 'test_sent' => $ok ? 'sent' : 'failed' ], admin_url( 'admin.php' ) ) );
+			exit;
+		}
+
 		wp_redirect( add_query_arg( [ 'page' => 'jtc-newsletter', 'saved' => '1' ], admin_url( 'admin.php' ) ) );
 		exit;
 	}
@@ -424,24 +532,19 @@ class JTC_Admin {
 
 	public function admin_notices(): void {
 		$screen = get_current_screen();
-		if ( ! $screen ) return;
+		if ( ! $screen || ! jtc_is_jtc_admin_screen( $screen ) ) {
+			return;
+		}
 
-		if ( isset( $_GET['saved'] ) && '1' === $_GET['saved'] ) {
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+
+		// Settings screens: every tab save lands here with saved=1 + tab.
+		if ( 'join-the-cause' === $page && isset( $_GET['saved'] ) && '1' === (string) $_GET['saved'] ) {
 			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Settings saved.', 'join-the-cause' ) . '</p></div>';
 		}
 
-		if ( isset( $_GET['sent'] ) ) {
-			printf(
-				'<div class="notice notice-success is-dismissible"><p>%s</p></div>',
-				sprintf(
-					/* translators: %d number of recipients */
-					esc_html__( 'Newsletter sent to %d recipients.', 'join-the-cause' ),
-					(int) $_GET['sent']
-				)
-			);
-		}
-
-		if ( isset( $_GET['email_test'] ) ) {
+		// Email test result (transient written by send_test_email()).
+		if ( 'join-the-cause' === $page && isset( $_GET['email_test'] ) ) {
 			$transient = 'jtc_email_test_result_' . get_current_user_id();
 			$result    = get_transient( $transient );
 			delete_transient( $transient );
@@ -452,6 +555,46 @@ class JTC_Admin {
 					! empty( $result['success'] ) ? 'success' : 'error',
 					esc_html( $result['message'] )
 				);
+			}
+		}
+
+		// Supporters screen.
+		if ( 'jtc-supporters' === $page && isset( $_GET['done'] ) && 'delete' === sanitize_key( wp_unslash( $_GET['done'] ) ) ) {
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Supporter deleted.', 'join-the-cause' ) . '</p></div>';
+		}
+
+		// Newsletter screen.
+		if ( 'jtc-newsletter' === $page ) {
+			if ( isset( $_GET['sent'] ) ) {
+				printf(
+					'<div class="notice notice-success is-dismissible"><p>%s</p></div>',
+					sprintf(
+						/* translators: %d number of recipients */
+						esc_html__( 'Newsletter sent to %d recipients.', 'join-the-cause' ),
+						(int) $_GET['sent']
+					)
+				);
+			}
+
+			if ( isset( $_GET['saved'] ) && '1' === (string) $_GET['saved'] ) {
+				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Newsletter draft saved.', 'join-the-cause' ) . '</p></div>';
+			}
+
+			if ( isset( $_GET['test_sent'] ) ) {
+				$test = sanitize_key( wp_unslash( $_GET['test_sent'] ) );
+				$map  = [
+					'sent'    => [ 'success', __( 'Test email sent to you.', 'join-the-cause' ) ],
+					'failed'  => [ 'error',   __( 'Test email failed. Check the Email tab settings.', 'join-the-cause' ) ],
+					'missing' => [ 'warning', __( 'Add a subject and message before sending a test.', 'join-the-cause' ) ],
+				];
+
+				if ( isset( $map[ $test ] ) ) {
+					printf(
+						'<div class="notice notice-%1$s is-dismissible"><p>%2$s</p></div>',
+						esc_attr( $map[ $test ][0] ),
+						esc_html( $map[ $test ][1] )
+					);
+				}
 			}
 		}
 	}
@@ -478,12 +621,33 @@ class JTC_Admin {
 		?>
 		<script>
 		jQuery( function( $ ) {
-			$( document ).on( 'click', '.jtc-shortcode', function() {
-				navigator.clipboard.writeText( $( this ).text() ).then( () => {
-					var $el = $( this );
+			function speak( message ) {
+				if ( window.wp && wp.a11y && wp.a11y.speak ) {
+					wp.a11y.speak( message, 'assertive' );
+				}
+			}
+
+			function copyShortcode( $el ) {
+				if ( ! navigator.clipboard || ! navigator.clipboard.writeText ) return;
+
+				navigator.clipboard.writeText( $el.text() ).then( function() {
 					$el.addClass( 'jtc-shortcode--copied' ).attr( 'title', '<?php echo esc_js( __( 'Copied!', 'join-the-cause' ) ); ?>' );
-					setTimeout( () => $el.removeClass( 'jtc-shortcode--copied' ).attr( 'title', '<?php echo esc_js( __( 'Click to copy', 'join-the-cause' ) ); ?>' ), 1500 );
+					speak( '<?php echo esc_js( __( 'Shortcode copied to clipboard.', 'join-the-cause' ) ); ?>' );
+					setTimeout( function() {
+						$el.removeClass( 'jtc-shortcode--copied' ).attr( 'title', '<?php echo esc_js( __( 'Click to copy', 'join-the-cause' ) ); ?>' );
+					}, 1500 );
 				} );
+			}
+
+			$( document ).on( 'click', '.jtc-shortcode', function() {
+				copyShortcode( $( this ) );
+			} );
+
+			$( document ).on( 'keydown', '.jtc-shortcode', function( event ) {
+				if ( 'Enter' === event.key || ' ' === event.key || 'Spacebar' === event.key ) {
+					event.preventDefault();
+					copyShortcode( $( this ) );
+				}
 			} );
 		} );
 		</script>

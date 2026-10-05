@@ -1,0 +1,15 @@
+# Files excluded from the plugin distribution zip (WordPress.org / builds).
+.git
+.github
+.gitignore
+.DS_Store
+node_modules
+package.json
+package-lock.json
+composer.json
+composer.lock
+phpunit.xml.dist
+phpcs.xml.dist
+tests
+assets/scss
+.distignore

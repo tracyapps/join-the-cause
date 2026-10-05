@@ -8,6 +8,7 @@ $jtc-primary-light: var(--jtc-primary-light, #f0faf0);
 $jtc-primary-rgb:   var(--jtc-primary-rgb, 45, 106, 45);
 $jtc-hero-from:     var(--jtc-hero-from, #245e2b);
 $jtc-hero-to:       var(--jtc-hero-to, #4f8d33);
+$jtc-hero-text:     var(--jtc-hero-text, #ffffff);
 $jtc-button-text:   var(--jtc-button-text, #ffffff);
 
 // Neutrals
@@ -22,20 +23,23 @@ $jtc-input-bg:      var(--jtc-input-bg, var(--jtc-surface, #ffffff));
 $jtc-error-color:   #c0392b;
 $jtc-success-color: #1e7e34;
 
-// Layout
-$jtc-panel-width:   380px;
+// Layout (radius/shadow/panel width are style options — PHP emits the vars)
+$jtc-panel-width:   var(--jtc-panel-width, 380px);
+$jtc-content-max:   var(--jtc-content-max, none);
 $jtc-gap:           32px;
-$jtc-radius:        8px;
-$jtc-radius-lg:     12px;
+$jtc-radius:        var(--jtc-radius, 8px);
+$jtc-radius-lg:     var(--jtc-radius-lg, 12px);
 
 // Shadow
-$jtc-shadow-sm:  0 1px 3px rgba(15, 23, 42, .08);
-$jtc-shadow-md:  0 10px 30px rgba(15, 23, 42, .12);
-$jtc-shadow-lg:  0 22px 55px rgba(15, 23, 42, .18);
+$jtc-shadow-sm:  var(--jtc-shadow-sm, 0 1px 3px rgba(15, 23, 42, .08));
+$jtc-shadow-md:  var(--jtc-shadow-md, 0 10px 30px rgba(15, 23, 42, .12));
+$jtc-shadow-lg:  var(--jtc-shadow-lg, 0 22px 55px rgba(15, 23, 42, .18));
 
-// Typography
-$jtc-font-base:  -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-$jtc-font-size:  16px;
+// Typography — font source defaults to "inherit" so themes keep their fonts;
+// PHP overrides --jtc-font-base when a system/custom stack is selected.
+$jtc-font-base:   var(--jtc-font-base, inherit);
+$jtc-font-size:   16px;
+$jtc-font-scale:  var(--jtc-font-scale, 1);
 $jtc-line-height: 1.6;
 
 // Breakpoints

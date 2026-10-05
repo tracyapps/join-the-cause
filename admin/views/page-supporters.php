@@ -61,9 +61,22 @@ $all_petitions = get_posts( [
 ] );
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-$sort_url = function( string $col ) use ( $order_by, $order ): string {
+$sort_url = function ( string $col ) use ( $order_by, $order, $search, $filter_petition ): string {
 	$new_order = ( $col === $order_by && 'ASC' === $order ) ? 'DESC' : 'ASC';
-	return add_query_arg( [ 'page' => 'jtc-supporters', 'orderby' => $col, 'order' => $new_order ], admin_url( 'admin.php' ) );
+	$args      = [
+		'page'    => 'jtc-supporters',
+		'orderby' => $col,
+		'order'   => $new_order,
+	];
+
+	if ( $search ) {
+		$args['s'] = $search;
+	}
+	if ( $filter_petition ) {
+		$args['petition_id'] = $filter_petition;
+	}
+
+	return add_query_arg( $args, admin_url( 'admin.php' ) );
 };
 
 $sort_class = fn( string $col ): string => $col === $order_by ? 'sorted ' . strtolower( $order ) : 'sortable';
@@ -158,14 +171,6 @@ $total_pages = (int) ceil( $total / $per_page );
 			<?php else : ?>
 			<?php foreach ( $rows as $row ) :
 				$petition_title = get_the_title( (int) $row['petition_id'] ) ?: '—';
-				$delete_url     = wp_nonce_url(
-					add_query_arg( [
-						'page'                 => 'jtc-supporters',
-						'jtc_supporter_action' => 'delete',
-						'supporter_id'         => $row['id'],
-					], admin_url( 'admin.php' ) ),
-					'jtc_delete_supporter_' . $row['id']
-				);
 			?>
 			<tr>
 				<td><?php echo esc_html( $row['first_name'] . ' ' . $row['last_name'] ); ?></td>
@@ -180,14 +185,30 @@ $total_pages = (int) ceil( $total / $per_page );
 						<?php echo esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $row['signed_at'] ) ) ); ?>
 					</time>
 				</td>
-				<td><?php echo $row['display_consent'] ? '✓' : '—'; ?></td>
 				<td>
-					<a href="<?php echo esc_url( $delete_url ); ?>"
-					   class="jtc-delete-link"
-					   aria-label="<?php printf( esc_attr__( 'Delete %s', 'join-the-cause' ), esc_attr( $row['first_name'] . ' ' . $row['last_name'] ) ); ?>"
-					   onclick="return confirm('<?php echo esc_js( __( 'Delete this supporter? This cannot be undone.', 'join-the-cause' ) ); ?>')">
-						<?php esc_html_e( 'Delete', 'join-the-cause' ); ?>
-					</a>
+					<?php if ( $row['display_consent'] ) : ?>
+						<span aria-hidden="true">✓</span><span class="screen-reader-text"><?php esc_html_e( 'Yes', 'join-the-cause' ); ?></span>
+					<?php else : ?>
+						<span aria-hidden="true">—</span><span class="screen-reader-text"><?php esc_html_e( 'No', 'join-the-cause' ); ?></span>
+					<?php endif; ?>
+				</td>
+				<td>
+					<form method="post" action="" style="display:inline;">
+						<?php wp_nonce_field( 'jtc_delete_supporter_' . $row['id'] ); ?>
+						<input type="hidden" name="jtc_supporter_action" value="delete">
+						<input type="hidden" name="supporter_id" value="<?php echo esc_attr( $row['id'] ); ?>">
+						<button type="submit" class="button-link jtc-delete-link"
+							aria-label="<?php
+								printf(
+									/* translators: %s: supporter name */
+									esc_attr__( 'Delete %s', 'join-the-cause' ),
+									esc_attr( $row['first_name'] . ' ' . $row['last_name'] )
+								);
+							?>"
+							onclick="return confirm('<?php echo esc_js( __( 'Delete this supporter? This cannot be undone.', 'join-the-cause' ) ); ?>')">
+							<?php esc_html_e( 'Delete', 'join-the-cause' ); ?>
+						</button>
+					</form>
 				</td>
 			</tr>
 			<?php endforeach; ?>

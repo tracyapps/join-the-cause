@@ -16,6 +16,7 @@ class JTC_Post_Types {
 		add_action( 'init',                  [ $this, 'register_cpt' ] );
 		add_action( 'add_meta_boxes',        [ $this, 'add_meta_boxes' ] );
 		add_action( 'save_post_' . JTC_CPT,  [ $this, 'save_meta_boxes' ] );
+		add_action( 'admin_notices',         [ $this, 'shortio_admin_notices' ] );
 
 		// Customise the CPT list-table columns.
 		add_filter( 'manage_' . JTC_CPT . '_posts_columns',         [ $this, 'cpt_columns' ] );
@@ -67,16 +68,23 @@ class JTC_Post_Types {
 		];
 
 		register_post_type( JTC_CPT, [
-			'labels'             => $labels,
-			'public'             => true,
-			'has_archive'        => false, // Archive handled by JTC newsletter pages.
-			'show_ui'            => true,
-			'show_in_menu'       => false, // Shown under our custom menu instead.
-			'show_in_rest'       => false, // Classic editor only.
-			'capability_type'    => 'post',
-			'supports'           => [ 'title', 'editor', 'thumbnail', 'excerpt' ],
-			'menu_position'      => 25,
-			'rewrite'            => [ 'slug' => 'petition', 'with_front' => false ],
+			'labels'                => $labels,
+			'public'                => true,
+			'publicly_queryable'    => true,
+			'exclude_from_search'   => false,
+			'has_archive'           => false, // Archive handled by JTC newsletter pages.
+			'show_ui'               => true,
+			'show_in_menu'          => false, // Shown under our custom menu instead.
+			'show_in_nav_menus'     => true,
+			'show_in_admin_bar'     => true,
+			'show_in_rest'          => true,
+			'rest_base'             => 'petitions',
+			'rest_controller_class' => 'WP_REST_Posts_Controller',
+			'capability_type'       => 'post',
+			'supports'              => [ 'title', 'editor', 'thumbnail', 'excerpt' ],
+			'menu_position'         => 25,
+			'query_var'             => true,
+			'rewrite'               => [ 'slug' => 'petition', 'with_front' => false ],
 		] );
 	}
 
@@ -123,7 +131,7 @@ class JTC_Post_Types {
 			case 'jtc_shortcode':
 				$code = '[jtc_petition id="' . $post_id . '"]';
 				printf(
-					'<code class="jtc-shortcode" title="%s" tabindex="0">%s</code>',
+					'<code class="jtc-shortcode" title="%s" tabindex="0" role="button">%s</code>',
 					esc_attr__( 'Click to copy', 'join-the-cause' ),
 					esc_html( $code )
 				);
@@ -152,6 +160,15 @@ class JTC_Post_Types {
 			'jtc_petition_settings',
 			__( 'Petition Settings', 'join-the-cause' ),
 			[ $this, 'render_settings_meta_box' ],
+			JTC_CPT,
+			'side',
+			'default'
+		);
+
+		add_meta_box(
+			'jtc_shortio_link',
+			__( 'Short.io Link', 'join-the-cause' ),
+			[ $this, 'render_shortio_meta_box' ],
 			JTC_CPT,
 			'side',
 			'default'
@@ -191,11 +208,18 @@ class JTC_Post_Types {
 				</tr>
 			</thead>
 			<tbody>
-				<?php foreach ( [ 'First Name', 'Last Name', 'Email Address' ] as $built_in ) : ?>
+				<?php
+				$built_in_fields = [
+					[ __( 'First Name',    'join-the-cause' ), 'text' ],
+					[ __( 'Last Name',     'join-the-cause' ), 'text' ],
+					[ __( 'Email Address', 'join-the-cause' ), 'email' ],
+				];
+				foreach ( $built_in_fields as $built_in ) :
+				?>
 				<tr style="opacity:.6;">
-					<td><?php echo esc_html( $built_in ); ?></td>
-					<td><?php echo 'Email Address' === $built_in ? 'email' : 'text'; ?></td>
-					<td>✓</td>
+					<td><?php echo esc_html( $built_in[0] ); ?></td>
+					<td><?php echo esc_html( $built_in[1] ); ?></td>
+					<td><span aria-hidden="true">✓</span><span class="screen-reader-text"><?php esc_html_e( 'Yes', 'join-the-cause' ); ?></span></td>
 					<td><em><?php esc_html_e( 'locked', 'join-the-cause' ); ?></em></td>
 				</tr>
 				<?php endforeach; ?>
@@ -210,6 +234,8 @@ class JTC_Post_Types {
 						<th><?php esc_html_e( 'Label', 'join-the-cause' ); ?></th>
 						<th><?php esc_html_e( 'Type', 'join-the-cause' ); ?></th>
 						<th><?php esc_html_e( 'Placeholder', 'join-the-cause' ); ?></th>
+						<th><?php esc_html_e( 'Options', 'join-the-cause' ); ?><br>
+							<span class="description"><?php esc_html_e( 'select fields only', 'join-the-cause' ); ?></span></th>
 						<th><?php esc_html_e( 'Required', 'join-the-cause' ); ?></th>
 						<th><?php esc_html_e( 'Remove', 'join-the-cause' ); ?></th>
 					</tr>
@@ -233,6 +259,103 @@ class JTC_Post_Types {
 		<?php
 	}
 
+	public function render_shortio_meta_box( WP_Post $post ): void {
+		wp_nonce_field( 'jtc_save_shortio_' . $post->ID, 'jtc_shortio_nonce' );
+
+		$client     = new JTC_Short_IO();
+		// No remote calls while rendering: refresh happens on save or via the
+		// "Pull from Short.io" button (avoids HTTP + meta writes on page views).
+		$data       = $client->get_petition_data( $post->ID );
+		$short_url  = $data['secure_url'] ?: $data['short_url'];
+		$qr_url     = jtc_get_petition_qr_url( $post->ID );
+		$configured = $client->is_configured();
+		$post_slug  = $post->post_name ?: sanitize_title( $post->post_title );
+		?>
+		<?php if ( ! $configured ) : ?>
+			<p class="description">
+				<?php esc_html_e( 'Configure Short.io in Join the Cause settings before creating petition short links.', 'join-the-cause' ); ?>
+			</p>
+		<?php endif; ?>
+
+		<p>
+			<label for="jtc_shortio_custom_path"><strong><?php esc_html_e( 'Custom short slug', 'join-the-cause' ); ?></strong></label>
+			<input type="text" id="jtc_shortio_custom_path" name="jtc_shortio_custom_path"
+				value="<?php echo esc_attr( $data['custom_path'] ); ?>" class="widefat"
+				placeholder="<?php echo esc_attr( $post_slug ); ?>">
+			<span class="description"><?php esc_html_e( 'This pushes a slug to Short.io when you create or update the link. Leave blank to let Short.io generate one.', 'join-the-cause' ); ?></span>
+		</p>
+
+		<p>
+			<label>
+				<input type="checkbox" name="jtc_shortio_sync_slug" value="1" <?php checked( $data['sync_slug'] ); ?>>
+				<?php esc_html_e( 'Sync with the WordPress petition slug', 'join-the-cause' ); ?>
+			</label>
+			<span class="description"><?php esc_html_e( 'When checked, saving this petition pushes the WordPress slug to Short.io. If the slug changes in Short.io later, the site pulls the latest Short.io URL before sharing.', 'join-the-cause' ); ?></span>
+		</p>
+
+		<p>
+			<button type="submit" class="button button-secondary" name="jtc_shortio_sync" value="1" <?php disabled( ! $configured ); ?>>
+				<?php echo esc_html( $short_url ? __( 'Update short link', 'join-the-cause' ) : __( 'Create short link', 'join-the-cause' ) ); ?>
+			</button>
+			<?php if ( $short_url ) : ?>
+				<button type="submit" class="button" name="jtc_shortio_pull_remote" value="1" <?php disabled( ! $configured ); ?>>
+					<?php esc_html_e( 'Pull from Short.io', 'join-the-cause' ); ?>
+				</button>
+				<button type="submit" class="button" name="jtc_shortio_refresh_qr" value="1" <?php disabled( ! $configured ); ?>>
+					<?php esc_html_e( 'Refresh QR', 'join-the-cause' ); ?>
+				</button>
+			<?php endif; ?>
+		</p>
+
+		<?php if ( $short_url ) : ?>
+			<div class="jtc-shortio-current">
+				<p><strong><?php esc_html_e( 'Current Short.io URL', 'join-the-cause' ); ?></strong></p>
+				<p><a href="<?php echo esc_url( $short_url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $short_url ); ?></a></p>
+				<?php if ( $data['path'] ) : ?>
+					<p class="description">
+						<?php
+						printf(
+							/* translators: %s Short.io slug */
+							esc_html__( 'Current Short.io slug: %s', 'join-the-cause' ),
+							esc_html( $data['path'] )
+						);
+						?>
+					</p>
+				<?php endif; ?>
+				<?php if ( $data['last_synced'] ) : ?>
+					<p class="description">
+						<?php
+						printf(
+							/* translators: %s sync date/time */
+							esc_html__( 'Last synced: %s', 'join-the-cause' ),
+							esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $data['last_synced'] ) ) )
+						);
+						?>
+					</p>
+				<?php endif; ?>
+			</div>
+		<?php endif; ?>
+
+		<?php if ( $qr_url ) : ?>
+			<div class="jtc-shortio-qr">
+				<img src="<?php echo esc_url( $qr_url ); ?>" alt="<?php esc_attr_e( 'Short link QR code', 'join-the-cause' ); ?>">
+				<p class="jtc-shortio-qr__actions">
+					<a class="button button-small" href="<?php echo esc_url( $qr_url ); ?>" download>
+						<?php esc_html_e( 'Download QR', 'join-the-cause' ); ?>
+					</a>
+					<button type="button" class="button button-small jtc-print-qr" data-qr-url="<?php echo esc_url( $qr_url ); ?>">
+						<?php esc_html_e( 'Print', 'join-the-cause' ); ?>
+					</button>
+				</p>
+			</div>
+		<?php endif; ?>
+
+		<?php if ( $data['last_error'] ) : ?>
+			<p class="jtc-shortio-error"><?php echo esc_html( $data['last_error'] ); ?></p>
+		<?php endif; ?>
+		<?php
+	}
+
 	/** Outputs a single editable field row (called both on page load and via JS template). */
 	private function render_field_row( int $index, array $field ): void {
 		$label       = esc_attr( $field['label']       ?? '' );
@@ -240,6 +363,7 @@ class JTC_Post_Types {
 		$placeholder = esc_attr( $field['placeholder'] ?? '' );
 		$required    = ! empty( $field['required'] );
 		$uid         = esc_attr( $field['id'] ?? wp_generate_uuid4() );
+		$options     = array_map( 'strval', (array) ( $field['options'] ?? [] ) );
 		?>
 		<tr class="jtc-field-row" data-id="<?php echo $uid; ?>">
 			<td class="jtc-drag-handle" aria-hidden="true" title="<?php esc_attr_e( 'Drag to reorder', 'join-the-cause' ); ?>">⠿</td>
@@ -266,6 +390,14 @@ class JTC_Post_Types {
 					aria-label="<?php esc_attr_e( 'Placeholder text', 'join-the-cause' ); ?>"
 				>
 			</td>
+			<td class="jtc-field-options-cell"<?php echo 'select' !== ( $field['type'] ?? 'text' ) ? ' style="display:none;"' : ''; ?>>
+				<textarea
+					class="jtc-field-options"
+					rows="2"
+					placeholder="<?php esc_attr_e( 'One option per line', 'join-the-cause' ); ?>"
+					aria-label="<?php esc_attr_e( 'Select field options', 'join-the-cause' ); ?>"
+				><?php echo esc_textarea( implode( "\n", $options ) ); ?></textarea>
+			</td>
 			<td style="text-align:center;">
 				<input
 					type="checkbox"
@@ -274,7 +406,9 @@ class JTC_Post_Types {
 					aria-label="<?php esc_attr_e( 'Required field', 'join-the-cause' ); ?>"
 				>
 			</td>
-			<td>
+			<td class="jtc-field-actions">
+				<button type="button" class="button-link jtc-move-field jtc-move-field--up" aria-label="<?php esc_attr_e( 'Move field up', 'join-the-cause' ); ?>">↑</button>
+				<button type="button" class="button-link jtc-move-field jtc-move-field--down" aria-label="<?php esc_attr_e( 'Move field down', 'join-the-cause' ); ?>">↓</button>
 				<button type="button" class="button-link jtc-remove-field" aria-label="<?php esc_attr_e( 'Remove this field', 'join-the-cause' ); ?>">✕</button>
 			</td>
 		</tr>
@@ -478,7 +612,7 @@ class JTC_Post_Types {
 			wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['jtc_settings_nonce'] ) ), 'jtc_save_settings_' . $post_id )
 		) {
 			$raw = isset( $_POST['jtc_petition_settings'] )
-				? (array) $_POST['jtc_petition_settings'] // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+				? (array) wp_unslash( $_POST['jtc_petition_settings'] ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 				: [];
 
 			$allowed_shares = [ 'facebook', 'twitter', 'copy', 'embed' ];
@@ -508,5 +642,104 @@ class JTC_Post_Types {
 			] );
 			add_action( 'save_post_' . JTC_CPT, [ $this, 'save_meta_boxes' ] );
 		}
+
+		$this->save_shortio_meta( $post_id );
+	}
+
+	private function save_shortio_meta( int $post_id ): void {
+		$has_nonce = isset( $_POST['jtc_shortio_nonce'] )
+			&& wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['jtc_shortio_nonce'] ) ), 'jtc_save_shortio_' . $post_id );
+
+		$old_custom_path = (string) get_post_meta( $post_id, '_jtc_shortio_custom_path', true );
+		$old_sync_slug   = (bool) get_post_meta( $post_id, '_jtc_shortio_sync_slug', true );
+		$custom_path     = $old_custom_path;
+		$sync_slug       = $old_sync_slug;
+
+		if ( $has_nonce ) {
+			$custom_path = JTC_Short_IO::sanitize_path( (string) ( $_POST['jtc_shortio_custom_path'] ?? '' ) );
+			$sync_slug   = ! empty( $_POST['jtc_shortio_sync_slug'] );
+
+			update_post_meta( $post_id, '_jtc_shortio_custom_path', $custom_path );
+			update_post_meta( $post_id, '_jtc_shortio_sync_slug', $sync_slug ? 1 : 0 );
+		}
+
+		if ( 'publish' !== get_post_status( $post_id ) ) {
+			return;
+		}
+
+		$has_link      = (bool) get_post_meta( $post_id, '_jtc_shortio_link_id', true );
+		$manual_sync   = $has_nonce && ! empty( $_POST['jtc_shortio_sync'] );
+		$refresh_qr    = $has_nonce && ! empty( $_POST['jtc_shortio_refresh_qr'] );
+		$pull_remote   = $has_nonce && ! empty( $_POST['jtc_shortio_pull_remote'] );
+		$auto_create   = (bool) get_option( 'jtc_shortio_auto_create', 0 );
+		$path_changed  = $has_nonce && ( $old_custom_path !== $custom_path || $old_sync_slug !== $sync_slug );
+		$current_slug  = (string) get_post_field( 'post_name', $post_id );
+		$stored_path   = (string) get_post_meta( $post_id, '_jtc_shortio_path', true );
+		$should_sync   = $manual_sync || ( $auto_create && ! $has_link ) || ( $has_link && ( $path_changed || ( $sync_slug && $current_slug !== $stored_path ) ) );
+		$notice_status = '';
+		$notice_text   = '';
+
+		$client = new JTC_Short_IO();
+
+		if ( $pull_remote && $has_link ) {
+			$result = $client->refresh_petition_link_from_remote( $post_id, true );
+
+			if ( is_wp_error( $result ) ) {
+				$notice_status = 'error';
+				$notice_text   = $result->get_error_message();
+			} else {
+				$notice_status = 'success';
+				$notice_text   = __( 'Short.io link pulled from Short.io.', 'join-the-cause' );
+			}
+		} elseif ( $should_sync ) {
+			$path   = $sync_slug ? (string) get_post_field( 'post_name', $post_id ) : $custom_path;
+			$result = $client->sync_petition_link( $post_id, $path, ! $sync_slug && '' === $custom_path );
+
+			if ( is_wp_error( $result ) ) {
+				$notice_status = 'error';
+				$notice_text   = $result->get_error_message();
+			} else {
+				$notice_status = 'success';
+				$notice_text   = __( 'Short.io link synced.', 'join-the-cause' );
+			}
+		} elseif ( $refresh_qr && $has_link ) {
+			$result = $client->refresh_petition_qr( $post_id );
+
+			if ( is_wp_error( $result ) ) {
+				$notice_status = 'error';
+				$notice_text   = $result->get_error_message();
+				update_post_meta( $post_id, '_jtc_shortio_last_error', $notice_text );
+			} else {
+				$notice_status = 'success';
+				$notice_text   = __( 'Short.io QR code refreshed.', 'join-the-cause' );
+				delete_post_meta( $post_id, '_jtc_shortio_last_error' );
+			}
+		}
+
+		if ( $notice_text ) {
+			set_transient(
+				'jtc_shortio_notice_' . get_current_user_id(),
+				[
+					'status' => $notice_status,
+					'text'   => $notice_text,
+				],
+				MINUTE_IN_SECONDS
+			);
+		}
+	}
+
+	public function shortio_admin_notices(): void {
+		$notice = get_transient( 'jtc_shortio_notice_' . get_current_user_id() );
+		if ( ! is_array( $notice ) || empty( $notice['text'] ) ) {
+			return;
+		}
+
+		delete_transient( 'jtc_shortio_notice_' . get_current_user_id() );
+
+		printf(
+			'<div class="notice notice-%1$s is-dismissible"><p>%2$s</p></div>',
+			'error' === ( $notice['status'] ?? '' ) ? 'error' : 'success',
+			esc_html( $notice['text'] )
+		);
 	}
 }

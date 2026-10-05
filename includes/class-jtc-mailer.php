@@ -110,6 +110,8 @@ class JTC_Mailer {
 	public function send_newsletter( int $newsletter_id, int $petition_id, string $subject, string $html_content ): int {
 		global $wpdb;
 
+		$table = $wpdb->prefix . 'jtc_newsletters';
+
 		$query = ( 0 === $petition_id )
 			? "SELECT DISTINCT email, first_name FROM {$wpdb->prefix}jtc_supporters"
 			: $wpdb->prepare(
@@ -119,17 +121,49 @@ class JTC_Mailer {
 
 		$recipients = $wpdb->get_results( $query ); // phpcs:ignore
 
-		$count = 0;
+		// Persist progress incrementally so an interrupted send (timeout) does
+		// not lose all state: the row shows "sending" with a partial count that
+		// can be inspected afterwards.
+		$wpdb->update(
+			$table,
+			[ 'status' => 'sending', 'recipients_count' => 0 ],
+			[ 'id' => $newsletter_id ],
+			[ '%s', '%d' ],
+			[ '%d' ]
+		);
+
+		$count       = 0;
+		$batch_size  = max( 1, (int) apply_filters( 'jtc_newsletter_batch_size', 25 ) );
+		$batch_since = 0;
+
 		foreach ( $recipients as $r ) {
 			$personalised = str_replace( '{first_name}', esc_html( $r->first_name ), $html_content );
 			if ( $this->send( $r->email, $subject, $personalised, true ) ) {
 				$count++;
 			}
+
+			$batch_since++;
+			if ( $batch_since >= $batch_size ) {
+				$batch_since = 0;
+
+				// Best-effort time extension per batch (hosts may disallow this).
+				if ( function_exists( 'set_time_limit' ) ) {
+					@set_time_limit( 60 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+				}
+
+				$wpdb->update(
+					$table,
+					[ 'recipients_count' => $count ],
+					[ 'id' => $newsletter_id ],
+					[ '%d' ],
+					[ '%d' ]
+				);
+			}
 		}
 
-		// Update send record.
+		// Final state.
 		$wpdb->update(
-			$wpdb->prefix . 'jtc_newsletters',
+			$table,
 			[
 				'status'           => 'sent',
 				'sent_at'          => current_time( 'mysql' ),
@@ -161,10 +195,32 @@ class JTC_Mailer {
 			return false;
 		}
 
-		return match ( $this->method ) {
-			'api'  => $this->send_via_api( $to, $subject, $body, $is_html ),
+		$sent = match ( $this->method ) {
+			'api'   => $this->send_via_api( $to, $subject, $body, $is_html ),
 			default => $this->send_via_wp_mail( $to, $subject, $body, $is_html ),
 		};
+
+		// Persist the last outcome so the Help tab can show diagnostics.
+		// The static keeps bulk sends (newsletters) from doing option
+		// lookups/writes on every single recipient.
+		static $mail_error_exists = null;
+
+		if ( $sent ) {
+			if ( null === $mail_error_exists ) {
+				$mail_error_exists = '' !== (string) get_option( 'jtc_last_mailer_error', '' );
+			}
+			if ( $mail_error_exists ) {
+				delete_option( 'jtc_last_mailer_error' );
+				delete_option( 'jtc_last_mailer_error_time' );
+				$mail_error_exists = false;
+			}
+		} elseif ( '' !== $this->last_error ) {
+			update_option( 'jtc_last_mailer_error', $this->last_error, true );
+			update_option( 'jtc_last_mailer_error_time', current_time( 'mysql' ), true );
+			$mail_error_exists = true;
+		}
+
+		return $sent;
 	}
 
 	// ─── wp_mail (default + SMTP override) ───────────────────────────────────
@@ -349,15 +405,20 @@ class JTC_Mailer {
 	 * Replaces {tokens} in email subjects and bodies.
 	 *
 	 * Available: {first_name}, {last_name}, {email}, {petition_title},
-	 *            {petition_url}, {site_name}, {site_url}
+	 *            {petition_url}, {petition_short_url}, {site_name}, {site_url}
 	 */
 	private function replace_tokens( string $text, array $supporter, WP_Post $petition ): string {
+		$canonical_url = (string) get_permalink( $petition->ID );
+		$share_url     = jtc_get_petition_share_url( $petition->ID );
+		$short_url     = jtc_get_petition_short_url( $petition->ID ) ?: $canonical_url;
+
 		$tokens = [
 			'{first_name}'     => $supporter['first_name'] ?? '',
 			'{last_name}'      => $supporter['last_name']  ?? '',
 			'{email}'          => $supporter['email']      ?? '',
 			'{petition_title}' => $petition->post_title,
-			'{petition_url}'   => get_permalink( $petition->ID ),
+			'{petition_url}'   => $share_url,
+			'{petition_short_url}' => $short_url,
 			'{site_name}'      => get_bloginfo( 'name' ),
 			'{site_url}'       => home_url(),
 		];

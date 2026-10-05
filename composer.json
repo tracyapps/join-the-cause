@@ -1,0 +1,13 @@
+{
+	"name": "tracyapps/join-the-cause",
+	"description": "Petition and newsletter management for WordPress.",
+	"type": "wordpress-plugin",
+	"license": "GPL-2.0-or-later",
+	"require": {},
+	"require-dev": {
+		"phpunit/phpunit": "^9.6"
+	},
+	"scripts": {
+		"test": "phpunit"
+	}
+}

@@ -9,13 +9,16 @@
   --jtc-local-muted: var(--jtc-text-muted, color-mix(in srgb, currentColor 68%, transparent));
 
   font-family: $jtc-font-base;
-  font-size: $jtc-font-size;
+  font-size: calc(#{$jtc-font-size} * var(--jtc-font-scale, 1));
   line-height: $jtc-line-height;
   color: var(--jtc-local-text);
   position: relative;
   background: $jtc-page-bg;
   border-radius: $jtc-radius-lg;
   padding: clamp(18px, 3vw, 32px);
+  max-width: $jtc-content-max;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .jtc-petition *,
@@ -63,6 +66,27 @@
   grid-template-columns: 1fr;
 }
 
+// ─── Hero style variants (data-jtc-hero from Layout & Style settings) ───────
+
+.jtc-petition[data-jtc-hero='solid'] .jtc-petition__header {
+  background: $jtc-hero-from;
+}
+
+.jtc-petition[data-jtc-hero='minimal'] .jtc-petition__header {
+  background: $jtc-bg;
+  color: $jtc-text;
+  border: 1px solid $jtc-border;
+  box-shadow: none;
+
+  &::after {
+    display: none;
+  }
+
+  .jtc-petition__dek {
+    color: $jtc-text-muted;
+  }
+}
+
 .jtc-petition__intro {
   position: relative;
   z-index: 1;
@@ -95,7 +119,7 @@
   min-height: 260px;
   aspect-ratio: 4 / 3;
   background: rgba(255, 255, 255, .18);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, .2);
+  box-shadow: $jtc-shadow-lg;
 
   img {
     width: 100%;
@@ -163,7 +187,7 @@
   font-size: 1rem;
   font-weight: 700;
   margin: 0 0 12px;
-  color: $jtc-primary;
+  color: $jtc-primary-dark;
 }
 
 .jtc-recent-signers__list {
@@ -182,7 +206,7 @@
   font-size: .9rem;
 
   &::before {
-    content: '✓';
+    content: '✓' / '';
     color: $jtc-primary;
     font-weight: 700;
     flex-shrink: 0;
@@ -248,6 +272,81 @@
     background: #000;
     border-color: #000;
     color: #fff;
+  }
+}
+
+.jtc-share__qr {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 16px;
+  background: $jtc-bg-alt;
+  border: 1px solid $jtc-border;
+  border-radius: $jtc-radius;
+
+  img {
+    width: 112px;
+    height: 112px;
+    object-fit: contain;
+    flex: 0 0 auto;
+    background: #fff;
+    padding: 6px;
+    border: 1px solid $jtc-border;
+  }
+
+  @include jtc-mobile {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+.jtc-share__qr-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.jtc-share__qr-btn,
+.jtc-success-share__copy {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 7px 12px;
+  border-radius: $jtc-radius;
+  border: 2px solid $jtc-border;
+  background: $jtc-bg;
+  color: $jtc-text-strong;
+  font-size: .85rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    border-color: $jtc-primary;
+    color: $jtc-primary;
+  }
+
+  &:focus-visible { @include jtc-focus; }
+}
+
+.jtc-success-share {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid $jtc-border;
+
+  p {
+    margin: 0 0 8px;
+    font-weight: 700;
+  }
+
+  a {
+    display: block;
+    margin-bottom: 10px;
+    overflow-wrap: anywhere;
   }
 }
 
@@ -475,25 +574,41 @@
   }
 }
 
+// Screen-reader-only announcer for share/copy feedback.
+.jtc-sr-announcer {
+  @include visually-hidden;
+}
+
+// Manual-copy fallback (Clipboard API unavailable): temporary input holding
+// the URL, selected so the user can copy it with Ctrl/Cmd+C.
+.jtc-copy-temp {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  font-size: .85rem;
+}
+
 // ─── Submit button ────────────────────────────────────────────────────────────
 
 .jtc-form__submit {
   display: block;
   width: 100%;
   padding: 13px 20px;
-  background: $jtc-primary;
-  color: $jtc-button-text;
-  border: none;
+  background: var(--jtc-button-bg, #{$jtc-primary});
+  color: var(--jtc-button-fg, #ffffff);
+  border: 2px solid var(--jtc-button-border, transparent);
   border-radius: $jtc-radius;
   font-size: 1rem;
   font-weight: 700;
   font-family: $jtc-font-base;
   cursor: pointer;
-  transition: background .2s, transform .1s;
+  transition: background .2s, color .2s, transform .1s;
   text-align: center;
 
   &:hover {
-    background: $jtc-primary-dark;
+    background: var(--jtc-button-hover-bg, #{$jtc-primary-dark});
+    border-color: var(--jtc-button-hover-bg, #{$jtc-primary-dark});
+    color: var(--jtc-button-hover-fg, var(--jtc-button-fg, #ffffff));
   }
 
   &:active {
@@ -556,9 +671,9 @@
   display: block;
   width: 100%;
   padding: 14px 20px;
-  background: $jtc-primary;
-  color: $jtc-button-text;
-  border: none;
+  background: var(--jtc-button-bg, #{$jtc-primary});
+  color: var(--jtc-button-fg, #ffffff);
+  border: 2px solid var(--jtc-button-border, transparent);
   border-radius: $jtc-radius;
   font-size: 1rem;
   font-weight: 700;
@@ -573,4 +688,41 @@
   font-weight: 400;
   font-size: .85em;
   opacity: .85;
+}
+
+// ─── No-JS notice & honeypot ─────────────────────────────────────────────────
+
+.jtc-form__noscript {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: $jtc-radius;
+  background: #fdedec;
+  border: 1px solid #fadbd8;
+  color: $jtc-error-color;
+  font-size: .9rem;
+  line-height: 1.5;
+}
+
+// Bot-mitigation honeypot: off-screen, invisible, never announced.
+.jtc-field--hp {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+// ─── Reduced motion ──────────────────────────────────────────────────────────
+
+@media (prefers-reduced-motion: reduce) {
+  .jtc-petition,
+  .jtc-petition * {
+    transition: none;
+    animation: none;
+  }
+
+  .jtc-petition {
+    scroll-behavior: auto;
+  }
 }

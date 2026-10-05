@@ -1,0 +1,23 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "jtc/petition",
+	"title": "Petition",
+	"category": "join-the-cause",
+	"icon": "megaphone",
+	"description": "Embed a petition with its signature form, progress bar, and share tools.",
+	"keywords": [ "petition", "sign", "cause" ],
+	"textdomain": "join-the-cause",
+	"version": "0.1.0",
+	"attributes": {
+		"petitionId": { "type": "number", "default": 0 },
+		"showTitle": { "type": "boolean", "default": false }
+	},
+	"supports": {
+		"html": false,
+		"multiple": true,
+		"anchor": true
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./editor.css"
+}

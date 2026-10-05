@@ -111,22 +111,47 @@ class JTC_Shortcode {
 			$fields = [];
 		}
 
-		// Enqueue assets and pass runtime data to JS.
+		// Enqueue assets and pass SHARED strings/settings to JS. Per-instance
+		// config (petition id, nonce, share URL) travels on each .jtc-petition
+		// wrapper as data attributes so multiple petitions per page never collide.
 		wp_enqueue_style( 'jtc-public' );
 		wp_enqueue_script( 'jtc-public' );
 		wp_localize_script( 'jtc-public', 'jtcData', [
-			'ajaxUrl'    => admin_url( 'admin-ajax.php' ),
-			'nonce'      => wp_create_nonce( 'jtc_sign_petition' ),
-			'petitionId' => $petition_id,
-			'i18n'       => [
-				'signing'      => __( 'Signing…',                          'join-the-cause' ),
-				'sign'         => __( 'Sign the Petition',                 'join-the-cause' ),
-				'errorGeneric' => __( 'Something went wrong. Please try again.', 'join-the-cause' ),
+			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+			'i18n'    => [
+				'signing'        => __( 'Signing…',                          'join-the-cause' ),
+				'sign'           => __( 'Sign the Petition',                 'join-the-cause' ),
+				'errorGeneric'   => __( 'Something went wrong. Please try again.', 'join-the-cause' ),
+				'shareLabel'     => __( 'Share this petition:',              'join-the-cause' ),
+				'copyLink'       => __( 'Copy link',                         'join-the-cause' ),
+				'copied'         => __( 'Copied!',                           'join-the-cause' ),
+				'emailInvalid'   => __( 'Please enter a valid email address.', 'join-the-cause' ),
+				'fieldRequired'  => __( 'This field is required.',           'join-the-cause' ),
+				/* translators: %d: percentage of goal reached */
+				'goalProgress'   => __( '%d%% of goal reached',              'join-the-cause' ),
+				/* translators: %s: signature count, e.g. "1,248" */
+				'signedCount'    => __( '— %s signed',                       'join-the-cause' ),
+				'thanksFallback' => __( 'Thank you for signing!',            'join-the-cause' ),
+				'embedPrompt'    => __( 'Copy this shortcode to embed the petition:', 'join-the-cause' ),
+				'printQrTitle'   => __( 'Print QR',                          'join-the-cause' ),
+				'qrAlt'          => __( 'QR code',                           'join-the-cause' ),
+				'copySuccess'    => __( 'Link copied to clipboard.',         'join-the-cause' ),
+				'copyManual'     => __( 'Text selected. Press Ctrl+C (or Cmd+C) to copy.', 'join-the-cause' ),
 			],
 		] );
 
+		// Safety net: attach the CSS vars inline when the head output was
+		// skipped (late renders, page builders) — no-op when already printed.
+		jtc_maybe_add_inline_css_vars();
+
+		$config = [
+			'ajax_url'  => admin_url( 'admin-ajax.php' ),
+			'nonce'     => wp_create_nonce( 'jtc_sign_petition' ),
+			'share_url' => jtc_get_petition_share_url( $petition_id ),
+		];
+
 		ob_start();
-		$this->render_petition( $petition, $s, $count, $recent, $fields, $show_title );
+		$this->render_petition( $petition, $s, $count, $recent, $fields, $show_title, $config );
 		return ob_get_clean();
 	}
 
@@ -138,23 +163,36 @@ class JTC_Shortcode {
 		int     $count,
 		array   $recent,
 		array   $fields,
-		bool    $show_title
+		bool    $show_title,
+		array   $config
 	): void {
-		$has_image   = has_post_thumbnail( $petition->ID );
+		$style       = jtc_get_style_options();
+		$hero_style  = (string) ( $style['hero_style'] ?: 'gradient' );
 		$goal        = (int) ( $s['goal'] ?? 0 );
 		$show_count  = ! empty( $s['show_count'] );
 		$show_recent = ! empty( $s['show_recent'] );
+		$show_dek    = isset( $s['show_dek'] ) ? ! empty( $s['show_dek'] ) : ! empty( $style['show_dek'] );
+		$show_share  = isset( $s['show_share'] ) ? ! empty( $s['show_share'] ) : ! empty( $style['show_share'] );
+		$show_qr     = isset( $s['show_qr'] ) ? ! empty( $s['show_qr'] ) : ! empty( $style['show_qr'] );
+		$show_image  = isset( $s['show_featured_image'] ) ? ! empty( $s['show_featured_image'] ) : ! empty( $style['show_featured_image'] );
+		$has_image   = $show_image && has_post_thumbnail( $petition->ID );
 		$privacy     = get_option( 'jtc_privacy_notice', '' );
 		$terms       = get_option( 'jtc_terms_of_service', '' );
 		$shares      = (array) ( $s['share_buttons'] ?? [] );
+		$qr_url      = jtc_get_petition_qr_url( $petition->ID );
+		$short_url   = jtc_get_petition_short_url( $petition->ID );
 		$pid         = esc_attr( $petition->ID );
-		$dek         = has_excerpt( $petition )
+		$dek         = $show_dek && ( has_excerpt( $petition )
 			? get_the_excerpt( $petition )
-			: wp_trim_words( wp_strip_all_tags( $petition->post_content ), 28, '…' );
+			: wp_trim_words( wp_strip_all_tags( $petition->post_content ), 28, '…' ) );
 		?>
 		<div class="jtc-petition<?php echo $has_image ? '' : ' no-featured-image'; ?>"
 		     id="jtc-petition-<?php echo $pid; ?>"
-		     data-petition-id="<?php echo $pid; ?>">
+		     data-petition-id="<?php echo $pid; ?>"
+		     data-jtc-hero="<?php echo esc_attr( $hero_style ); ?>"
+		     data-jtc-ajax-url="<?php echo esc_url( $config['ajax_url'] ); ?>"
+		     data-jtc-nonce="<?php echo esc_attr( $config['nonce'] ); ?>"
+		     data-jtc-share-url="<?php echo esc_url( $config['share_url'] ); ?>">
 
 			<!-- ── Header ─────────────────────────────────────────────── -->
 			<header class="jtc-petition__header">
@@ -233,15 +271,30 @@ class JTC_Shortcode {
 					</section>
 					<?php endif; ?>
 
-					<?php if ( $shares ) : ?>
+					<?php if ( $show_share && ( $shares || ( $show_qr && $qr_url && $short_url ) ) ) : ?>
 					<section class="jtc-share"
 					         aria-label="<?php esc_attr_e( 'Share this petition', 'join-the-cause' ); ?>">
 						<h2 class="jtc-share__heading">
 							<?php esc_html_e( 'Share this petition', 'join-the-cause' ); ?>
 						</h2>
+						<?php if ( $shares ) : ?>
 						<div class="jtc-share__buttons">
 							<?php $this->render_share_buttons( $petition, $shares ); ?>
 						</div>
+						<?php endif; ?>
+						<?php if ( $show_qr && $qr_url && $short_url ) : ?>
+						<div class="jtc-share__qr">
+							<img src="<?php echo esc_url( $qr_url ); ?>" alt="<?php esc_attr_e( 'Petition short link QR code', 'join-the-cause' ); ?>">
+							<div class="jtc-share__qr-actions">
+								<a class="jtc-share__qr-btn" href="<?php echo esc_url( $qr_url ); ?>" download>
+									<?php esc_html_e( 'Download QR', 'join-the-cause' ); ?>
+								</a>
+								<button type="button" class="jtc-share__qr-btn" data-action="print-qr" data-qr-url="<?php echo esc_url( $qr_url ); ?>">
+									<?php esc_html_e( 'Print QR', 'join-the-cause' ); ?>
+								</button>
+							</div>
+						</div>
+						<?php endif; ?>
 					</section>
 					<?php endif; ?>
 
@@ -268,14 +321,20 @@ class JTC_Shortcode {
 							</span>
 
 							<?php if ( $goal > 0 ) :
-								$pct = min( 100, round( ( $count / $goal ) * 100 ) );
+								$pct            = min( 100, round( ( $count / $goal ) * 100 ) );
+								$progress_label = sprintf(
+									/* translators: %d: percentage of goal reached */
+									__( '%d%% of goal reached', 'join-the-cause' ),
+									$pct
+								);
 							?>
 							<div class="jtc-progress"
 							     role="progressbar"
+							     data-jtc-goal="<?php echo esc_attr( $goal ); ?>"
 							     aria-valuenow="<?php echo esc_attr( $pct ); ?>"
 							     aria-valuemin="0"
 							     aria-valuemax="100"
-							     aria-label="<?php printf( esc_attr__( '%d%% of goal reached', 'join-the-cause' ), $pct ); ?>">
+							     aria-label="<?php echo esc_attr( $progress_label ); ?>">
 								<div class="jtc-progress__bar"
 								     style="width:<?php echo esc_attr( $pct ); ?>%"></div>
 							</div>
@@ -307,14 +366,18 @@ class JTC_Shortcode {
 		     aria-hidden="true">
 			<button class="jtc-mobile-cta__button"
 			        type="button"
-			        aria-expanded="false"
 			        aria-controls="jtc-sign-panel-<?php echo $pid; ?>">
 				<?php esc_html_e( 'Sign the Petition', 'join-the-cause' ); ?>
 				<?php if ( $show_count ) : ?>
 				<span class="jtc-mobile-cta__count"
 				      id="jtc-mobile-count-<?php echo $pid; ?>">
-					— <?php echo esc_html( number_format_i18n( $count ) ); ?>
-					<?php esc_html_e( 'signed', 'join-the-cause' ); ?>
+					<?php
+					printf(
+						/* translators: %s: signature count, e.g. "1,248" */
+						esc_html__( '— %s signed', 'join-the-cause' ),
+						esc_html( number_format_i18n( $count ) )
+					);
+					?>
 				</span>
 				<?php endif; ?>
 			</button>
@@ -338,6 +401,12 @@ class JTC_Shortcode {
 		      id="jtc-form-<?php echo $pid; ?>"
 		      novalidate
 		      aria-label="<?php esc_attr_e( 'Signature form', 'join-the-cause' ); ?>">
+
+			<noscript>
+				<p class="jtc-form__noscript">
+					<?php esc_html_e( 'This form needs JavaScript to submit. Please enable JavaScript, or contact the site to sign in another way.', 'join-the-cause' ); ?>
+				</p>
+			</noscript>
 
 			<h2 class="jtc-form__heading">
 				<?php esc_html_e( 'Sign the Petition', 'join-the-cause' ); ?>
@@ -410,6 +479,7 @@ class JTC_Shortcode {
 			<?php foreach ( $fields as $field ) :
 				$field_id   = sanitize_key( $field['id'] );
 				$input_id   = 'jtc-extra-' . $petition_id . '-' . $field_id;
+				$error_id   = $input_id . '-error';
 				$input_name = 'jtc_extra_' . $field_id;
 				$label_text = esc_html( $field['label'] );
 				$required   = ! empty( $field['required'] );
@@ -433,6 +503,7 @@ class JTC_Shortcode {
 				          id="<?php echo esc_attr( $input_id ); ?>"
 				          name="<?php echo esc_attr( $input_name ); ?>"
 				          placeholder="<?php echo $ph; ?>"
+				          aria-describedby="<?php echo esc_attr( $error_id ); ?>"
 				          <?php if ( $required ) : ?>required aria-required="true"<?php endif; ?>
 				          rows="3"></textarea>
 
@@ -443,14 +514,19 @@ class JTC_Shortcode {
 					       id="<?php echo esc_attr( $input_id ); ?>"
 					       name="<?php echo esc_attr( $input_name ); ?>"
 					       value="1"
+					       aria-describedby="<?php echo esc_attr( $error_id ); ?>"
 					       <?php if ( $required ) : ?>required aria-required="true"<?php endif; ?>>
 					<?php echo $label_text; ?>
+					<?php if ( $required ) : ?>
+					<span aria-hidden="true" class="jtc-required">*</span>
+					<?php endif; ?>
 				</label>
 
 				<?php elseif ( 'select' === $type ) : ?>
 				<select class="jtc-field__input jtc-field__select"
 				        id="<?php echo esc_attr( $input_id ); ?>"
 				        name="<?php echo esc_attr( $input_name ); ?>"
+				        aria-describedby="<?php echo esc_attr( $error_id ); ?>"
 				        <?php if ( $required ) : ?>required aria-required="true"<?php endif; ?>>
 					<option value="">
 						<?php esc_html_e( '— Select —', 'join-the-cause' ); ?>
@@ -468,9 +544,14 @@ class JTC_Shortcode {
 				       id="<?php echo esc_attr( $input_id ); ?>"
 				       name="<?php echo esc_attr( $input_name ); ?>"
 				       placeholder="<?php echo $ph; ?>"
+				       aria-describedby="<?php echo esc_attr( $error_id ); ?>"
 				       <?php if ( $required ) : ?>required aria-required="true"<?php endif; ?>>
 				<?php endif; ?>
 
+				<span class="jtc-field__error"
+				      id="<?php echo esc_attr( $error_id ); ?>"
+				      role="alert"
+				      hidden></span>
 			</div>
 			<?php endforeach; ?>
 
@@ -496,10 +577,27 @@ class JTC_Shortcode {
 			<p class="jtc-form__terms"><?php echo wp_kses_post( $terms ); ?></p>
 			<?php endif; ?>
 
+			<!-- Bot mitigation: off-screen honeypot (never shown or announced) -->
+			<div class="jtc-field jtc-field--hp" aria-hidden="true">
+				<label class="jtc-field__label"
+				       for="jtc-hp-<?php echo $pid; ?>">
+					<?php esc_html_e( 'Website', 'join-the-cause' ); ?>
+				</label>
+				<input class="jtc-field__input"
+				       type="text"
+				       id="jtc-hp-<?php echo $pid; ?>"
+				       name="jtc_website"
+				       value=""
+				       tabindex="-1"
+				       autocomplete="off">
+			</div>
+			<input type="hidden" name="jtc_form_time" value="<?php echo esc_attr( time() ); ?>">
+
 			<div class="jtc-form__status"
 			     id="jtc-status-<?php echo $pid; ?>"
 			     role="alert"
-			     aria-live="assertive"></div>
+			     aria-live="assertive"
+			     tabindex="-1"></div>
 
 			<button class="jtc-form__submit"
 			        type="submit"
@@ -514,23 +612,24 @@ class JTC_Shortcode {
 	// ─── Share buttons ────────────────────────────────────────────────────────
 
 	private function render_share_buttons( WP_Post $petition, array $services ): void {
-		$url   = rawurlencode( get_permalink( $petition->ID ) );
-		$title = rawurlencode( $petition->post_title );
+		$share_url   = jtc_get_petition_share_url( $petition->ID );
+		$encoded_url = rawurlencode( $share_url );
+		$title       = rawurlencode( $petition->post_title );
 
 		$buttons = [
 			'facebook' => [
 				'label' => __( 'Share on Facebook',    'join-the-cause' ),
-				'href'  => "https://www.facebook.com/sharer/sharer.php?u={$url}",
+				'href'  => "https://www.facebook.com/sharer/sharer.php?u={$encoded_url}",
 				'icon'  => 'f',
 			],
 			'twitter'  => [
 				'label' => __( 'Share on X (Twitter)', 'join-the-cause' ),
-				'href'  => "https://twitter.com/intent/tweet?url={$url}&text={$title}",
+				'href'  => "https://twitter.com/intent/tweet?url={$encoded_url}&text={$title}",
 				'icon'  => '𝕏',
 			],
 			'copy'     => [
 				'label' => __( 'Copy link',             'join-the-cause' ),
-				'href'  => '#copy',
+				'href'  => $share_url,
 				'icon'  => '🔗',
 			],
 			'embed'    => [
@@ -545,7 +644,7 @@ class JTC_Shortcode {
 			$b      = $buttons[ $svc ];
 			$is_ext = in_array( $svc, [ 'facebook', 'twitter' ], true );
 			printf(
-				'<a class="jtc-share__btn jtc-share__btn--%1$s" href="%2$s" %3$s aria-label="%4$s" rel="noopener noreferrer">%5$s</a>',
+				'<a class="jtc-share__btn jtc-share__btn--%1$s" href="%2$s" %3$s aria-label="%4$s" rel="noopener noreferrer"><span aria-hidden="true">%5$s</span></a>',
 				esc_attr( $svc ),
 				esc_url( $b['href'] ),
 				$is_ext ? 'target="_blank"' : 'data-action="' . esc_attr( $svc ) . '"',
