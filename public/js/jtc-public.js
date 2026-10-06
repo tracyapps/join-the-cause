@@ -58,7 +58,7 @@ jQuery( function ( $ ) {
 		var $count      = $petition.find( '.jtc-count__number' );
 		var $progress   = $petition.find( '.jtc-progress' );
 		var $recentList = $petition.find( '.jtc-recent-signers__list' );
-		var $mobileCta  = $( '#jtc-mobile-cta-' + pid );
+		var $mobileCta  = $( '#jtc-mobile-cta-' + $petition.attr( 'data-instance-id' ) );
 
 		if ( ! $mobileCta.length ) {
 			$mobileCta = $petition.nextAll( '.jtc-mobile-cta' ).first();
@@ -244,7 +244,7 @@ jQuery( function ( $ ) {
 		function handleSuccess( data ) {
 			// Refresh signature count everywhere.
 			if ( data.count !== undefined ) {
-				var formatted = parseInt( data.count, 10 ).toLocaleString();
+				var formatted = String( data.count_formatted || data.count );
 				$count.text( formatted );
 				if ( $mobileCount.length ) {
 					$mobileCount.text( t( 'signedCount', '— %s signed' ).replace( '%s', formatted ) );

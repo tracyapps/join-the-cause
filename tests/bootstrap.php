@@ -3,9 +3,9 @@
  * PHPUnit bootstrap for the Join the Cause test suite.
  *
  * Requires the WordPress test library (WP_TESTS_DIR or the default
- * /tmp/wordpress-tests-lib location) and a database. These tests are NOT
- * runnable in the static verification environment used for this pass
- * (no MySQL); they are provided as the standard scaffold for CI.
+ * /tmp/wordpress-tests-lib location) and a dedicated disposable database.
+ * WordPress tests reset their database: never use a development or production
+ * site database for this suite.
  *
  * @package JoinTheCause
  */
@@ -30,5 +30,10 @@ tests_add_filter(
 		require dirname( __DIR__ ) . '/join-the-cause.php';
 	}
 );
+
+$jtc_polyfills = dirname( __DIR__ ) . '/vendor/yoast/phpunit-polyfills/phpunitpolyfills-autoload.php';
+if ( file_exists( $jtc_polyfills ) ) {
+	require_once $jtc_polyfills;
+}
 
 require $_tests_dir . '/includes/bootstrap.php';

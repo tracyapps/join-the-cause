@@ -11,17 +11,21 @@
  * @package JoinTheCause
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit;
-if ( ! current_user_can( 'manage_options' ) ) wp_die( __( 'Not allowed.', 'join-the-cause' ) );
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+if ( ! current_user_can( 'manage_options' ) ) {
+	wp_die( esc_html__( 'Not allowed.', 'join-the-cause' ) );
+}
 
-$jtc_tabs = [
+$jtc_tabs = array(
 	'help'         => __( 'Help & Quick Start', 'join-the-cause' ),
-	'appearance'   => __( 'Appearance',         'join-the-cause' ),
-	'defaults'     => __( 'Petitions',          'join-the-cause' ),
-	'email'        => __( 'Email',              'join-the-cause' ),
-	'integrations' => __( 'Integrations',       'join-the-cause' ),
-	'general'      => __( 'General',            'join-the-cause' ),
-];
+	'appearance'   => __( 'Appearance', 'join-the-cause' ),
+	'defaults'     => __( 'Petitions', 'join-the-cause' ),
+	'email'        => __( 'Email', 'join-the-cause' ),
+	'integrations' => __( 'Integrations', 'join-the-cause' ),
+	'general'      => __( 'General', 'join-the-cause' ),
+);
 
 $active_tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'help';
 
@@ -38,9 +42,21 @@ if ( ! isset( $jtc_tabs[ $active_tab ] ) ) {
 
 	<nav class="nav-tab-wrapper" aria-label="<?php esc_attr_e( 'Settings tabs', 'join-the-cause' ); ?>">
 		<?php foreach ( $jtc_tabs as $jtc_slug => $jtc_label ) : ?>
-			<a href="<?php echo esc_url( add_query_arg( [ 'page' => 'join-the-cause', 'tab' => $jtc_slug ], admin_url( 'admin.php' ) ) ); ?>"
-			   class="nav-tab<?php echo $active_tab === $jtc_slug ? ' nav-tab-active' : ''; ?>"
-			   <?php echo $active_tab === $jtc_slug ? ' aria-current="page"' : ''; ?>>
+			<a href="
+			<?php
+			echo esc_url(
+				add_query_arg(
+					array(
+						'page' => 'join-the-cause',
+						'tab'  => $jtc_slug,
+					),
+					admin_url( 'admin.php' )
+				)
+			);
+			?>
+						"
+				class="nav-tab<?php echo $active_tab === $jtc_slug ? ' nav-tab-active' : ''; ?>"
+				<?php echo $active_tab === $jtc_slug ? ' aria-current="page"' : ''; ?>>
 				<?php echo esc_html( $jtc_label ); ?>
 			</a>
 		<?php endforeach; ?>

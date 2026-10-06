@@ -9,24 +9,39 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/** Short IO WordPress component. */
 class JTC_Short_IO {
 
 	private const API_BASE = 'https://api.short.io';
-
+	/**
+	 * Is configured.
+	 *
+	 * @return bool Result value.
+	 */
 	public function is_configured(): bool {
 		return (bool) get_option( 'jtc_shortio_enabled', 0 )
 			&& '' !== $this->get_api_key()
 			&& '' !== $this->get_domain();
 	}
-
+	/**
+	 * Get domain.
+	 *
+	 * @return string Result value.
+	 */
 	public function get_domain(): string {
 		return self::normalize_domain( (string) get_option( 'jtc_shortio_domain', '' ) );
 	}
-
+	/**
+	 * Get api key.
+	 *
+	 * @return string Result value.
+	 */
 	public function get_api_key(): string {
-		return trim( (string) get_option( 'jtc_shortio_api_key', '' ) );
+		return trim( (string) jtc_get_secret( 'jtc_shortio_api_key' ) );
 	}
-
+	/**
+	 * Get domain id.
+	 */
 	public function get_domain_id() {
 		$cached = absint( get_option( 'jtc_shortio_domain_id', 0 ) );
 		if ( $cached ) {
@@ -62,7 +77,12 @@ class JTC_Short_IO {
 
 		return new WP_Error( 'jtc_shortio_domain_missing', __( 'The configured Short.io domain was not found for this API key.', 'join-the-cause' ) );
 	}
-
+	/**
+	 * Normalize domain.
+	 *
+	 * @param string $domain Domain.
+	 * @return string Result value.
+	 */
 	public static function normalize_domain( string $domain ): string {
 		$domain = trim( strtolower( $domain ) );
 		$domain = preg_replace( '#^https?://#', '', $domain );
@@ -70,14 +90,25 @@ class JTC_Short_IO {
 
 		return sanitize_text_field( (string) $domain );
 	}
-
+	/**
+	 * Sanitize path.
+	 *
+	 * @param string $path Relative API or URL path.
+	 * @return string Result value.
+	 */
 	public static function sanitize_path( string $path ): string {
 		$path = trim( wp_unslash( $path ) );
 		$path = trim( $path, "/ \t\n\r\0\x0B" );
 
 		return sanitize_title( $path );
 	}
-
+	/**
+	 * Sync petition link.
+	 *
+	 * @param int    $petition_id Petition post ID.
+	 * @param string $path Relative API or URL path.
+	 * @param bool   $force_auto_path Force auto path.
+	 */
 	public function sync_petition_link( int $petition_id, string $path = '', bool $force_auto_path = false ) {
 		if ( ! $this->is_configured() ) {
 			return new WP_Error( 'jtc_shortio_not_configured', __( 'Short.io is not configured.', 'join-the-cause' ) );
@@ -95,12 +126,12 @@ class JTC_Short_IO {
 		$link_id = (string) get_post_meta( $petition_id, '_jtc_shortio_link_id', true );
 		$path    = $force_auto_path ? '' : self::sanitize_path( $path );
 
-		$body = [
-			'originalURL'     => $original_url,
-			'title'           => get_the_title( $petition_id ),
-			'skipQS'          => false,
-			'archived'        => false,
-		];
+		$body = array(
+			'originalURL' => $original_url,
+			'title'       => get_the_title( $petition_id ),
+			'skipQS'      => false,
+			'archived'    => false,
+		);
 
 		if ( '' !== $path ) {
 			$body['path'] = $path;
@@ -128,7 +159,11 @@ class JTC_Short_IO {
 
 		return $response;
 	}
-
+	/**
+	 * Refresh petition qr.
+	 *
+	 * @param int $petition_id Petition post ID.
+	 */
 	public function refresh_petition_qr( int $petition_id ) {
 		$link_id = (string) get_post_meta( $petition_id, '_jtc_shortio_link_id', true );
 		if ( ! $link_id ) {
@@ -137,18 +172,20 @@ class JTC_Short_IO {
 
 		$response = wp_remote_post(
 			self::API_BASE . '/links/qr/' . rawurlencode( $link_id ),
-			[
+			array(
 				'timeout' => 30,
-				'headers' => [
+				'headers' => array(
 					'Authorization' => $this->get_api_key(),
 					'Accept'        => 'image/png, image/svg+xml, application/octet-stream, application/json',
 					'Content-Type'  => 'application/json',
-				],
-				'body'    => wp_json_encode( [
-					'type'              => 'png',
-					'useDomainSettings' => true,
-				] ),
-			]
+				),
+				'body'    => wp_json_encode(
+					array(
+						'type'              => 'png',
+						'useDomainSettings' => true,
+					)
+				),
+			)
 		);
 
 		if ( is_wp_error( $response ) ) {
@@ -167,9 +204,14 @@ class JTC_Short_IO {
 
 		return $this->store_qr_attachment( $petition_id, $body );
 	}
-
+	/**
+	 * Refresh petition link from remote.
+	 *
+	 * @param int  $petition_id Petition post ID.
+	 * @param bool $force Force.
+	 */
 	public function refresh_petition_link_from_remote( int $petition_id, bool $force = false ) {
-		static $refreshed = [];
+		static $refreshed = array();
 
 		if ( isset( $refreshed[ $petition_id ] ) ) {
 			return $refreshed[ $petition_id ];
@@ -202,11 +244,11 @@ class JTC_Short_IO {
 		$response = $this->request(
 			'GET',
 			add_query_arg(
-				[
+				array(
 					'domain_id' => absint( $domain_id ),
 					'idString'  => $link_id,
 					'limit'     => 1,
-				],
+				),
 				'/api/links'
 			)
 		);
@@ -232,7 +274,7 @@ class JTC_Short_IO {
 	}
 
 	/**
-	 * Tests the connection with a harmless read-only request (list domains)
+	 * Tests the connection with a harmless read-only request (list domains).
 	 * and reports whether the configured short domain is available.
 	 *
 	 * @return array|WP_Error { message: string } on success.
@@ -252,7 +294,7 @@ class JTC_Short_IO {
 				continue;
 			}
 
-			$count++;
+			++$count;
 			$hostname = self::normalize_domain( (string) ( $item['hostname'] ?? '' ) );
 			$unicode  = self::normalize_domain( (string) ( $item['unicodeHostname'] ?? '' ) );
 
@@ -264,14 +306,14 @@ class JTC_Short_IO {
 		if ( $domain_id ) {
 			update_option( 'jtc_shortio_domain_id', $domain_id );
 
-			return [
+			return array(
 				'message' => sprintf(
 					/* translators: 1 short domain, 2 number of domains on the account */
 					__( 'Connected. Domain "%1$s" found (account has %2$d domain(s)).', 'join-the-cause' ),
 					$domain,
 					$count
 				),
-			];
+			);
 		}
 
 		return new WP_Error(
@@ -284,9 +326,14 @@ class JTC_Short_IO {
 			)
 		);
 	}
-
+	/**
+	 * Get petition data.
+	 *
+	 * @param int $petition_id Petition post ID.
+	 * @return array Result value.
+	 */
 	public function get_petition_data( int $petition_id ): array {
-		return [
+		return array(
 			'link_id'       => (string) get_post_meta( $petition_id, '_jtc_shortio_link_id', true ),
 			'short_url'     => (string) get_post_meta( $petition_id, '_jtc_shortio_short_url', true ),
 			'secure_url'    => (string) get_post_meta( $petition_id, '_jtc_shortio_secure_short_url', true ),
@@ -296,19 +343,25 @@ class JTC_Short_IO {
 			'last_synced'   => (string) get_post_meta( $petition_id, '_jtc_shortio_last_synced', true ),
 			'last_error'    => (string) get_post_meta( $petition_id, '_jtc_shortio_last_error', true ),
 			'qr_attachment' => (int) get_post_meta( $petition_id, '_jtc_shortio_qr_attachment_id', true ),
-		];
+		);
 	}
-
-	private function request( string $method, string $path, array $body = [] ) {
-		$args = [
+	/**
+	 * Request.
+	 *
+	 * @param string $method HTTP or delivery method.
+	 * @param string $path Relative API or URL path.
+	 * @param array  $body Message body or request payload.
+	 */
+	private function request( string $method, string $path, array $body = array() ) {
+		$args = array(
 			'method'  => $method,
 			'timeout' => 30,
-			'headers' => [
+			'headers' => array(
 				'Authorization' => $this->get_api_key(),
 				'Accept'        => 'application/json',
 				'Content-Type'  => 'application/json',
-			],
-		];
+			),
+		);
 
 		if ( 'GET' !== strtoupper( $method ) ) {
 			$args['body'] = wp_json_encode( $body );
@@ -330,7 +383,7 @@ class JTC_Short_IO {
 			return new WP_Error(
 				'jtc_shortio_api_error',
 				$this->response_error_message( $response, __( 'Short.io API request failed.', 'join-the-cause' ) ),
-				[ 'status' => $code ]
+				array( 'status' => $code )
 			);
 		}
 
@@ -340,16 +393,22 @@ class JTC_Short_IO {
 
 		return $json;
 	}
-
+	/**
+	 * Extract first link.
+	 *
+	 * @param array  $response Response.
+	 * @param string $link_id Link id.
+	 * @return array Result value.
+	 */
 	private function extract_first_link( array $response, string $link_id ): array {
-		$candidates = [];
+		$candidates = array();
 
 		if ( isset( $response['links'] ) && is_array( $response['links'] ) ) {
 			$candidates = $response['links'];
 		} elseif ( isset( $response[0] ) && is_array( $response[0] ) ) {
 			$candidates = $response;
 		} elseif ( isset( $response['idString'] ) || isset( $response['id'] ) ) {
-			$candidates = [ $response ];
+			$candidates = array( $response );
 		}
 
 		foreach ( $candidates as $candidate ) {
@@ -357,18 +416,24 @@ class JTC_Short_IO {
 				continue;
 			}
 
-			if ( $link_id === (string) ( $candidate['idString'] ?? $candidate['id'] ?? '' ) ) {
+			if ( (string) ( $candidate['idString'] ?? $candidate['id'] ?? '' ) === $link_id ) {
 				return $candidate;
 			}
 		}
 
-		return [];
+		return array();
 	}
-
+	/**
+	 * Response error message.
+	 *
+	 * @param array  $response Response.
+	 * @param string $fallback Empty-value fallback.
+	 * @return string Result value.
+	 */
 	private function response_error_message( array $response, string $fallback ): string {
 		$json = json_decode( wp_remote_retrieve_body( $response ), true );
 		if ( is_array( $json ) ) {
-			foreach ( [ 'message', 'error', 'errorMessage' ] as $key ) {
+			foreach ( array( 'message', 'error', 'errorMessage' ) as $key ) {
 				if ( ! empty( $json[ $key ] ) && is_string( $json[ $key ] ) ) {
 					return sanitize_text_field( $json[ $key ] );
 				}
@@ -377,7 +442,13 @@ class JTC_Short_IO {
 
 		return $fallback;
 	}
-
+	/**
+	 * Store link response.
+	 *
+	 * @param int    $petition_id Petition post ID.
+	 * @param array  $response Response.
+	 * @param string $original_url Original url.
+	 */
 	private function store_link_response( int $petition_id, array $response, string $original_url ): void {
 		$link_id   = $response['idString'] ?? $response['id'] ?? '';
 		$short_url = $response['shortURL'] ?? '';
@@ -391,7 +462,12 @@ class JTC_Short_IO {
 		update_post_meta( $petition_id, '_jtc_shortio_last_synced', current_time( 'mysql' ) );
 		delete_post_meta( $petition_id, '_jtc_shortio_last_error' );
 	}
-
+	/**
+	 * Store qr attachment.
+	 *
+	 * @param int    $petition_id Petition post ID.
+	 * @param string $contents Contents.
+	 */
 	private function store_qr_attachment( int $petition_id, string $contents ) {
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 		require_once ABSPATH . 'wp-admin/includes/image.php';
@@ -411,7 +487,7 @@ class JTC_Short_IO {
 
 		$size = @getimagesize( $upload['file'] ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		if ( ! $size || IMAGETYPE_PNG !== (int) $size[2] ) {
-			@unlink( $upload['file'] ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			wp_delete_file( $upload['file'] ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			return new WP_Error( 'jtc_shortio_qr_invalid', __( 'Short.io returned a file that is not a PNG image.', 'join-the-cause' ) );
 		}
 
@@ -421,7 +497,7 @@ class JTC_Short_IO {
 		}
 
 		$attachment_id = wp_insert_attachment(
-			[
+			array(
 				'post_mime_type' => 'image/png',
 				'post_title'     => sprintf(
 					/* translators: %s petition title */
@@ -430,7 +506,7 @@ class JTC_Short_IO {
 				),
 				'post_content'   => '',
 				'post_status'    => 'inherit',
-			],
+			),
 			$upload['file'],
 			$petition_id
 		);
@@ -445,39 +521,4 @@ class JTC_Short_IO {
 
 		return $attachment_id;
 	}
-}
-
-function jtc_get_petition_short_url( int $petition_id, bool $allow_refresh = true ): string {
-	$client = new JTC_Short_IO();
-
-	if ( $allow_refresh && $client->is_configured() ) {
-		// Internally throttled by a short transient: at most one remote
-		// refresh per petition per ~10 minutes, never on every view.
-		$client->refresh_petition_link_from_remote( $petition_id );
-	}
-
-	$data = $client->get_petition_data( $petition_id );
-
-	return $data['secure_url'] ?: $data['short_url'];
-}
-
-function jtc_get_petition_share_url( int $petition_id, bool $allow_refresh = true ): string {
-	$client = new JTC_Short_IO();
-
-	// The short URL is only ever used when Short.io is fully configured,
-	// so a disabled integration can never serve a stale short link.
-	if ( $client->is_configured() && get_option( 'jtc_shortio_use_for_sharing', 0 ) ) {
-		$short = jtc_get_petition_short_url( $petition_id, $allow_refresh );
-		if ( $short ) {
-			return $short;
-		}
-	}
-
-	return (string) get_permalink( $petition_id );
-}
-
-function jtc_get_petition_qr_url( int $petition_id ): string {
-	$attachment_id = (int) get_post_meta( $petition_id, '_jtc_shortio_qr_attachment_id', true );
-
-	return $attachment_id ? (string) wp_get_attachment_url( $attachment_id ) : '';
 }

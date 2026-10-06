@@ -10,36 +10,46 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/** Post Types WordPress component. */
 class JTC_Post_Types {
-
+	/**
+	 * Register WordPress hooks for this component.
+	 */
 	public function register(): void {
-		add_action( 'init',                  [ $this, 'register_cpt' ] );
-		add_action( 'add_meta_boxes',        [ $this, 'add_meta_boxes' ] );
-		add_action( 'save_post_' . JTC_CPT,  [ $this, 'save_meta_boxes' ] );
-		add_action( 'admin_notices',         [ $this, 'shortio_admin_notices' ] );
+		add_action( 'init', array( $this, 'register_cpt' ) );
+		add_action( 'add_meta_boxes', array( $this, 'add_meta_boxes' ) );
+		add_action( 'save_post_' . JTC_CPT, array( $this, 'save_meta_boxes' ) );
+		add_action( 'admin_notices', array( $this, 'shortio_admin_notices' ) );
 
 		// Customise the CPT list-table columns.
-		add_filter( 'manage_' . JTC_CPT . '_posts_columns',         [ $this, 'cpt_columns' ] );
-		add_action( 'manage_' . JTC_CPT . '_posts_custom_column',   [ $this, 'cpt_column_content' ], 10, 2 );
-		add_filter( 'manage_edit-' . JTC_CPT . '_sortable_columns', [ $this, 'sortable_columns' ] );
+		add_filter( 'manage_' . JTC_CPT . '_posts_columns', array( $this, 'cpt_columns' ) );
+		add_action( 'manage_' . JTC_CPT . '_posts_custom_column', array( $this, 'cpt_column_content' ), 10, 2 );
+		add_filter( 'manage_edit-' . JTC_CPT . '_sortable_columns', array( $this, 'sortable_columns' ) );
 
 		// Single-petition page template (theme can still override via its own
 		// single-jtc_petition.php or single-petition.php).
-		add_filter( 'template_include', [ $this, 'petition_template' ] );
+		add_filter( 'template_include', array( $this, 'petition_template' ) );
 	}
 
 	// ─── Single-petition page template ────────────────────────────────────────
-
+	/**
+	 * Petition template.
+	 *
+	 * @param string $template Template.
+	 * @return string Result value.
+	 */
 	public function petition_template( string $template ): string {
 		if ( ! is_singular( JTC_CPT ) ) {
 			return $template;
 		}
 
 		// Let the active theme override with its own template files first.
-		$theme_override = locate_template( [
-			'single-' . JTC_CPT . '.php',
-			'single-petition.php',
-		] );
+		$theme_override = locate_template(
+			array(
+				'single-' . JTC_CPT . '.php',
+				'single-petition.php',
+			)
+		);
 
 		if ( $theme_override ) {
 			return $theme_override;
@@ -51,53 +61,66 @@ class JTC_Post_Types {
 	}
 
 	// ─── CPT registration ─────────────────────────────────────────────────────
-
+	/**
+	 * Register cpt.
+	 */
 	public function register_cpt(): void {
-		$labels = [
-			'name'               => __( 'Petitions',              'join-the-cause' ),
-			'singular_name'      => __( 'Petition',               'join-the-cause' ),
-			'add_new'            => __( 'Add Petition',           'join-the-cause' ),
-			'add_new_item'       => __( 'Add New Petition',       'join-the-cause' ),
-			'edit_item'          => __( 'Edit Petition',          'join-the-cause' ),
-			'new_item'           => __( 'New Petition',           'join-the-cause' ),
-			'view_item'          => __( 'View Petition',          'join-the-cause' ),
-			'search_items'       => __( 'Search Petitions',       'join-the-cause' ),
-			'not_found'          => __( 'No petitions found.',    'join-the-cause' ),
+		$labels = array(
+			'name'               => __( 'Petitions', 'join-the-cause' ),
+			'singular_name'      => __( 'Petition', 'join-the-cause' ),
+			'add_new'            => __( 'Add Petition', 'join-the-cause' ),
+			'add_new_item'       => __( 'Add New Petition', 'join-the-cause' ),
+			'edit_item'          => __( 'Edit Petition', 'join-the-cause' ),
+			'new_item'           => __( 'New Petition', 'join-the-cause' ),
+			'view_item'          => __( 'View Petition', 'join-the-cause' ),
+			'search_items'       => __( 'Search Petitions', 'join-the-cause' ),
+			'not_found'          => __( 'No petitions found.', 'join-the-cause' ),
 			'not_found_in_trash' => __( 'No petitions in trash.', 'join-the-cause' ),
-			'menu_name'          => __( 'Petitions',              'join-the-cause' ),
-		];
+			'menu_name'          => __( 'Petitions', 'join-the-cause' ),
+		);
 
-		register_post_type( JTC_CPT, [
-			'labels'                => $labels,
-			'public'                => true,
-			'publicly_queryable'    => true,
-			'exclude_from_search'   => false,
-			'has_archive'           => false, // Archive handled by JTC newsletter pages.
-			'show_ui'               => true,
-			'show_in_menu'          => false, // Shown under our custom menu instead.
-			'show_in_nav_menus'     => true,
-			'show_in_admin_bar'     => true,
-			'show_in_rest'          => true,
-			'rest_base'             => 'petitions',
-			'rest_controller_class' => 'WP_REST_Posts_Controller',
-			'capability_type'       => 'post',
-			'supports'              => [ 'title', 'editor', 'thumbnail', 'excerpt' ],
-			'menu_position'         => 25,
-			'query_var'             => true,
-			'rewrite'               => [ 'slug' => 'petition', 'with_front' => false ],
-		] );
+		register_post_type(
+			JTC_CPT,
+			array(
+				'labels'                => $labels,
+				'public'                => true,
+				'publicly_queryable'    => true,
+				'exclude_from_search'   => false,
+				'has_archive'           => false, // Archive handled by JTC newsletter pages.
+				'show_ui'               => true,
+				'show_in_menu'          => false, // Shown under our custom menu instead.
+				'show_in_nav_menus'     => true,
+				'show_in_admin_bar'     => true,
+				'show_in_rest'          => true,
+				'rest_base'             => 'petitions',
+				'rest_controller_class' => 'WP_REST_Posts_Controller',
+				'capability_type'       => 'post',
+				'supports'              => array( 'title', 'editor', 'thumbnail', 'excerpt' ),
+				'menu_position'         => 25,
+				'query_var'             => true,
+				'rewrite'               => array(
+					'slug'       => 'petition',
+					'with_front' => false,
+				),
+			)
+		);
 	}
 
 	// ─── Admin columns ────────────────────────────────────────────────────────
-
+	/**
+	 * Cpt columns.
+	 *
+	 * @param array $columns Columns.
+	 * @return array Result value.
+	 */
 	public function cpt_columns( array $columns ): array {
-		$new = [];
+		$new = array();
 		foreach ( $columns as $key => $label ) {
 			if ( 'title' === $key ) {
-				$new['jtc_thumb']     = __( 'Image',       'join-the-cause' );
+				$new['jtc_thumb']     = __( 'Image', 'join-the-cause' );
 				$new['title']         = $label;
-				$new['jtc_count']     = __( 'Signatures',  'join-the-cause' );
-				$new['jtc_shortcode'] = __( 'Shortcode',   'join-the-cause' );
+				$new['jtc_count']     = __( 'Signatures', 'join-the-cause' );
+				$new['jtc_shortcode'] = __( 'Shortcode', 'join-the-cause' );
 			} elseif ( 'date' === $key ) {
 				$new['date'] = $label;
 			} else {
@@ -106,12 +129,17 @@ class JTC_Post_Types {
 		}
 		return $new;
 	}
-
+	/**
+	 * Cpt column content.
+	 *
+	 * @param string $column Column.
+	 * @param int    $post_id WordPress post ID.
+	 */
 	public function cpt_column_content( string $column, int $post_id ): void {
 		switch ( $column ) {
 			case 'jtc_thumb':
 				if ( has_post_thumbnail( $post_id ) ) {
-					echo get_the_post_thumbnail( $post_id, [ 50, 50 ] );
+					echo get_the_post_thumbnail( $post_id, array( 50, 50 ) );
 				} else {
 					echo '<span aria-label="' . esc_attr__( 'No image', 'join-the-cause' ) . '">—</span>';
 				}
@@ -138,19 +166,25 @@ class JTC_Post_Types {
 				break;
 		}
 	}
-
+	/**
+	 * Sortable columns.
+	 *
+	 * @param array $columns Columns.
+	 * @return array Result value.
+	 */
 	public function sortable_columns( array $columns ): array {
-		$columns['jtc_count'] = 'jtc_count';
 		return $columns;
 	}
 
 	// ─── Meta boxes ──────────────────────────────────────────────────────────
-
+	/**
+	 * Add meta boxes.
+	 */
 	public function add_meta_boxes(): void {
 		add_meta_box(
 			'jtc_form_fields',
 			__( 'Signature Form Fields', 'join-the-cause' ),
-			[ $this, 'render_form_fields_meta_box' ],
+			array( $this, 'render_form_fields_meta_box' ),
 			JTC_CPT,
 			'normal',
 			'high'
@@ -159,7 +193,7 @@ class JTC_Post_Types {
 		add_meta_box(
 			'jtc_petition_settings',
 			__( 'Petition Settings', 'join-the-cause' ),
-			[ $this, 'render_settings_meta_box' ],
+			array( $this, 'render_settings_meta_box' ),
 			JTC_CPT,
 			'side',
 			'default'
@@ -168,7 +202,7 @@ class JTC_Post_Types {
 		add_meta_box(
 			'jtc_shortio_link',
 			__( 'Short.io Link', 'join-the-cause' ),
-			[ $this, 'render_shortio_meta_box' ],
+			array( $this, 'render_shortio_meta_box' ),
 			JTC_CPT,
 			'side',
 			'default'
@@ -177,7 +211,7 @@ class JTC_Post_Types {
 		add_meta_box(
 			'jtc_petition_stats',
 			__( 'Petition Stats', 'join-the-cause' ),
-			[ $this, 'render_stats_meta_box' ],
+			array( $this, 'render_stats_meta_box' ),
 			JTC_CPT,
 			'side',
 			'low'
@@ -185,12 +219,16 @@ class JTC_Post_Types {
 	}
 
 	// ─── Form Fields meta box ─────────────────────────────────────────────────
-
+	/**
+	 * Render form fields meta box.
+	 *
+	 * @param WP_Post $post Post.
+	 */
 	public function render_form_fields_meta_box( WP_Post $post ): void {
 		wp_nonce_field( 'jtc_save_form_fields_' . $post->ID, 'jtc_form_fields_nonce' );
 
 		$raw    = get_post_meta( $post->ID, '_jtc_form_fields', true );
-		$fields = $raw ? json_decode( $raw, true ) : [];
+		$fields = $raw ? json_decode( $raw, true ) : array();
 
 		// Always include the built-in (non-removable) fields for reference.
 		?>
@@ -209,13 +247,13 @@ class JTC_Post_Types {
 			</thead>
 			<tbody>
 				<?php
-				$built_in_fields = [
-					[ __( 'First Name',    'join-the-cause' ), 'text' ],
-					[ __( 'Last Name',     'join-the-cause' ), 'text' ],
-					[ __( 'Email Address', 'join-the-cause' ), 'email' ],
-				];
+				$built_in_fields = array(
+					array( __( 'First Name', 'join-the-cause' ), 'text' ),
+					array( __( 'Last Name', 'join-the-cause' ), 'text' ),
+					array( __( 'Email Address', 'join-the-cause' ), 'email' ),
+				);
 				foreach ( $built_in_fields as $built_in ) :
-				?>
+					?>
 				<tr style="opacity:.6;">
 					<td><?php echo esc_html( $built_in[0] ); ?></td>
 					<td><?php echo esc_html( $built_in[1] ); ?></td>
@@ -255,21 +293,25 @@ class JTC_Post_Types {
 		</div>
 
 		<!-- Hidden input that JS keeps in sync with the table state -->
-		<input type="hidden" id="jtc_form_fields_data" name="jtc_form_fields_data" value="<?php echo esc_attr( $raw ?: '[]' ); ?>">
+		<input type="hidden" id="jtc_form_fields_data" name="jtc_form_fields_data" value="<?php echo esc_attr( jtc_fallback( $raw, '[]' ) ); ?>">
 		<?php
 	}
-
+	/**
+	 * Render shortio meta box.
+	 *
+	 * @param WP_Post $post Post.
+	 */
 	public function render_shortio_meta_box( WP_Post $post ): void {
 		wp_nonce_field( 'jtc_save_shortio_' . $post->ID, 'jtc_shortio_nonce' );
 
-		$client     = new JTC_Short_IO();
+		$client = new JTC_Short_IO();
 		// No remote calls while rendering: refresh happens on save or via the
 		// "Pull from Short.io" button (avoids HTTP + meta writes on page views).
 		$data       = $client->get_petition_data( $post->ID );
-		$short_url  = $data['secure_url'] ?: $data['short_url'];
+		$short_url  = jtc_fallback( $data['secure_url'], $data['short_url'] );
 		$qr_url     = jtc_get_petition_qr_url( $post->ID );
 		$configured = $client->is_configured();
-		$post_slug  = $post->post_name ?: sanitize_title( $post->post_title );
+		$post_slug  = jtc_fallback( $post->post_name, sanitize_title( $post->post_title ) );
 		?>
 		<?php if ( ! $configured ) : ?>
 			<p class="description">
@@ -356,28 +398,33 @@ class JTC_Post_Types {
 		<?php
 	}
 
-	/** Outputs a single editable field row (called both on page load and via JS template). */
+	/**
+	 * Outputs a single editable field row (called both on page load and via JS template).
+	 *
+	 * @param int   $index Index.
+	 * @param array $field Field.
+	 */
 	private function render_field_row( int $index, array $field ): void {
-		$label       = esc_attr( $field['label']       ?? '' );
-		$type        = esc_attr( $field['type']        ?? 'text' );
+		$label       = esc_attr( $field['label'] ?? '' );
+		$type        = esc_attr( $field['type'] ?? 'text' );
 		$placeholder = esc_attr( $field['placeholder'] ?? '' );
 		$required    = ! empty( $field['required'] );
 		$uid         = esc_attr( $field['id'] ?? wp_generate_uuid4() );
-		$options     = array_map( 'strval', (array) ( $field['options'] ?? [] ) );
+		$options     = array_map( 'strval', (array) ( $field['options'] ?? array() ) );
 		?>
-		<tr class="jtc-field-row" data-id="<?php echo $uid; ?>">
+		<tr class="jtc-field-row" data-id="<?php echo esc_attr( $uid ); ?>">
 			<td class="jtc-drag-handle" aria-hidden="true" title="<?php esc_attr_e( 'Drag to reorder', 'join-the-cause' ); ?>">⠿</td>
 			<td>
 				<input
 					type="text"
 					class="jtc-field-label widefat"
-					value="<?php echo $label; ?>"
+					value="<?php echo esc_attr( $label ); ?>"
 					aria-label="<?php esc_attr_e( 'Field label', 'join-the-cause' ); ?>"
 				>
 			</td>
 			<td>
 				<select class="jtc-field-type" aria-label="<?php esc_attr_e( 'Field type', 'join-the-cause' ); ?>">
-					<?php foreach ( [ 'text', 'email', 'textarea', 'checkbox', 'select' ] as $t ) : ?>
+					<?php foreach ( array( 'text', 'email', 'textarea', 'checkbox', 'select' ) as $t ) : ?>
 					<option value="<?php echo esc_attr( $t ); ?>" <?php selected( $type, $t ); ?>><?php echo esc_html( $t ); ?></option>
 					<?php endforeach; ?>
 				</select>
@@ -386,7 +433,7 @@ class JTC_Post_Types {
 				<input
 					type="text"
 					class="jtc-field-placeholder widefat"
-					value="<?php echo $placeholder; ?>"
+					value="<?php echo esc_attr( $placeholder ); ?>"
 					aria-label="<?php esc_attr_e( 'Placeholder text', 'join-the-cause' ); ?>"
 				>
 			</td>
@@ -416,19 +463,23 @@ class JTC_Post_Types {
 	}
 
 	// ─── Petition Settings meta box ───────────────────────────────────────────
-
+	/**
+	 * Render settings meta box.
+	 *
+	 * @param WP_Post $post Post.
+	 */
 	public function render_settings_meta_box( WP_Post $post ): void {
 		wp_nonce_field( 'jtc_save_settings_' . $post->ID, 'jtc_settings_nonce' );
 
-		$defaults = get_option( 'jtc_petition_defaults', [] );
+		$defaults = get_option( 'jtc_petition_defaults', array() );
 		$saved    = get_post_meta( $post->ID, '_jtc_petition_settings', true );
-		$s        = is_array( $saved ) ? $saved : [];
+		$s        = is_array( $saved ) ? $saved : array();
 
 		// Helper: get value, falling back to global default.
 		$g = fn( string $key ) => $s[ $key ] ?? $defaults[ $key ] ?? null;
 
-		$share_services = [ 'facebook', 'twitter', 'copy', 'embed' ];
-		$saved_shares   = (array) ( $s['share_buttons'] ?? $defaults['share_buttons'] ?? [] );
+		$share_services = array( 'facebook', 'twitter', 'copy', 'embed' );
+		$saved_shares   = (array) ( $s['share_buttons'] ?? $defaults['share_buttons'] ?? array() );
 		?>
 		<p class="description" style="margin-bottom:12px;">
 			<?php esc_html_e( 'Override the global defaults for this petition only.', 'join-the-cause' ); ?>
@@ -518,7 +569,11 @@ class JTC_Post_Types {
 	}
 
 	// ─── Stats meta box ───────────────────────────────────────────────────────
-
+	/**
+	 * Render stats meta box.
+	 *
+	 * @param WP_Post $post Post.
+	 */
 	public function render_stats_meta_box( WP_Post $post ): void {
 		if ( 'auto-draft' === $post->post_status ) {
 			echo '<p>' . esc_html__( 'Stats available after first save.', 'join-the-cause' ) . '</p>';
@@ -570,38 +625,49 @@ class JTC_Post_Types {
 	}
 
 	// ─── Save callbacks ───────────────────────────────────────────────────────
-
+	/**
+	 * Save meta boxes.
+	 *
+	 * @param int $post_id WordPress post ID.
+	 */
 	public function save_meta_boxes( int $post_id ): void {
 		// Autosave / bulk-edit bail.
-		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
-		if ( ! current_user_can( 'edit_post', $post_id ) )     return;
+		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+			return;
+		}
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			return;
+		}
 
 		// ── Form fields ──
 		if (
 			isset( $_POST['jtc_form_fields_nonce'] ) &&
-			wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['jtc_form_fields_nonce'] ) ), 'jtc_save_form_fields_' . $post_id )
+			wp_verify_nonce( jtc_post_input( 'jtc_form_fields_nonce' ), 'jtc_save_form_fields_' . $post_id )
 		) {
 			$raw = isset( $_POST['jtc_form_fields_data'] )
-				? sanitize_text_field( wp_unslash( $_POST['jtc_form_fields_data'] ) )
+				? jtc_post_input( 'jtc_form_fields_data' )
 				: '[]';
 
 			$fields = json_decode( $raw, true );
 			if ( ! is_array( $fields ) ) {
-				$fields = [];
+				$fields = array();
 			}
 
 			// Sanitise each field definition.
-			$clean = array_map( function( array $f ): array {
-				return [
-					'id'          => sanitize_key( $f['id']          ?? wp_generate_uuid4() ),
-					'label'       => sanitize_text_field( $f['label']       ?? '' ),
-					'type'        => in_array( $f['type'] ?? '', [ 'text', 'email', 'textarea', 'checkbox', 'select' ], true )
-					                 ? $f['type'] : 'text',
-					'placeholder' => sanitize_text_field( $f['placeholder'] ?? '' ),
-					'required'    => ! empty( $f['required'] ),
-					'options'     => isset( $f['options'] ) ? array_map( 'sanitize_text_field', (array) $f['options'] ) : [],
-				];
-			}, $fields );
+			$clean = array_map(
+				function ( array $f ): array {
+					return array(
+						'id'          => sanitize_key( $f['id'] ?? wp_generate_uuid4() ),
+						'label'       => sanitize_text_field( $f['label'] ?? '' ),
+						'type'        => in_array( $f['type'] ?? '', array( 'text', 'email', 'textarea', 'checkbox', 'select' ), true )
+									? $f['type'] : 'text',
+						'placeholder' => sanitize_text_field( $f['placeholder'] ?? '' ),
+						'required'    => ! empty( $f['required'] ),
+						'options'     => isset( $f['options'] ) ? array_map( 'sanitize_text_field', (array) $f['options'] ) : array(),
+					);
+				},
+				array_filter( $fields, 'is_array' )
+			);
 
 			update_post_meta( $post_id, '_jtc_form_fields', wp_json_encode( $clean ) );
 		}
@@ -609,46 +675,52 @@ class JTC_Post_Types {
 		// ── Petition settings ──
 		if (
 			isset( $_POST['jtc_settings_nonce'] ) &&
-			wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['jtc_settings_nonce'] ) ), 'jtc_save_settings_' . $post_id )
+			wp_verify_nonce( jtc_post_input( 'jtc_settings_nonce' ), 'jtc_save_settings_' . $post_id )
 		) {
 			$raw = isset( $_POST['jtc_petition_settings'] )
 				? (array) wp_unslash( $_POST['jtc_petition_settings'] ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-				: [];
+				: array();
 
-			$allowed_shares = [ 'facebook', 'twitter', 'copy', 'embed' ];
+			$allowed_shares = array( 'facebook', 'twitter', 'copy', 'embed' );
 
-			$clean = [
+			$clean = array(
 				'goal'                => absint( $raw['goal'] ?? 0 ),
 				'show_count'          => ! empty( $raw['show_count'] ),
 				'show_recent'         => ! empty( $raw['show_recent'] ),
 				'allow_comments'      => ! empty( $raw['allow_comments'] ),
-				'after_sign_action'   => in_array( $raw['after_sign_action'] ?? '', [ 'message', 'redirect' ], true )
-				                          ? $raw['after_sign_action'] : 'message',
-				'after_sign_message'  => sanitize_textarea_field( $raw['after_sign_message'] ?? '' ),
-				'after_sign_redirect' => esc_url_raw( $raw['after_sign_redirect'] ?? '' ),
+				'after_sign_action'   => in_array( $raw['after_sign_action'] ?? '', array( 'message', 'redirect' ), true )
+											? $raw['after_sign_action'] : 'message',
+				'after_sign_message'  => sanitize_textarea_field( jtc_scalar( $raw['after_sign_message'] ?? '' ) ),
+				'after_sign_redirect' => esc_url_raw( jtc_scalar( $raw['after_sign_redirect'] ?? '' ) ),
 				'share_buttons'       => array_intersect(
-					array_map( 'sanitize_text_field', (array) ( $raw['share_buttons'] ?? [] ) ),
+					array_map( 'sanitize_text_field', (array) ( $raw['share_buttons'] ?? array() ) ),
 					$allowed_shares
 				),
-			];
+			);
 
 			update_post_meta( $post_id, '_jtc_petition_settings', $clean );
 
 			// Sync WP's native comment status with our setting.
-			remove_action( 'save_post_' . JTC_CPT, [ $this, 'save_meta_boxes' ] );
-			wp_update_post( [
-				'ID'             => $post_id,
-				'comment_status' => $clean['allow_comments'] ? 'open' : 'closed',
-			] );
-			add_action( 'save_post_' . JTC_CPT, [ $this, 'save_meta_boxes' ] );
+			remove_action( 'save_post_' . JTC_CPT, array( $this, 'save_meta_boxes' ) );
+			wp_update_post(
+				array(
+					'ID'             => $post_id,
+					'comment_status' => $clean['allow_comments'] ? 'open' : 'closed',
+				)
+			);
+			add_action( 'save_post_' . JTC_CPT, array( $this, 'save_meta_boxes' ) );
 		}
 
 		$this->save_shortio_meta( $post_id );
 	}
-
+	/**
+	 * Save shortio meta.
+	 *
+	 * @param int $post_id WordPress post ID.
+	 */
 	private function save_shortio_meta( int $post_id ): void {
 		$has_nonce = isset( $_POST['jtc_shortio_nonce'] )
-			&& wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['jtc_shortio_nonce'] ) ), 'jtc_save_shortio_' . $post_id );
+			&& wp_verify_nonce( jtc_post_input( 'jtc_shortio_nonce' ), 'jtc_save_shortio_' . $post_id );
 
 		$old_custom_path = (string) get_post_meta( $post_id, '_jtc_shortio_custom_path', true );
 		$old_sync_slug   = (bool) get_post_meta( $post_id, '_jtc_shortio_sync_slug', true );
@@ -656,8 +728,8 @@ class JTC_Post_Types {
 		$sync_slug       = $old_sync_slug;
 
 		if ( $has_nonce ) {
-			$custom_path = JTC_Short_IO::sanitize_path( (string) ( $_POST['jtc_shortio_custom_path'] ?? '' ) );
-			$sync_slug   = ! empty( $_POST['jtc_shortio_sync_slug'] );
+			$custom_path = JTC_Short_IO::sanitize_path( jtc_post_input( 'jtc_shortio_custom_path' ) );
+			$sync_slug   = '' !== jtc_post_input( 'jtc_shortio_sync_slug' );
 
 			update_post_meta( $post_id, '_jtc_shortio_custom_path', $custom_path );
 			update_post_meta( $post_id, '_jtc_shortio_sync_slug', $sync_slug ? 1 : 0 );
@@ -668,9 +740,9 @@ class JTC_Post_Types {
 		}
 
 		$has_link      = (bool) get_post_meta( $post_id, '_jtc_shortio_link_id', true );
-		$manual_sync   = $has_nonce && ! empty( $_POST['jtc_shortio_sync'] );
-		$refresh_qr    = $has_nonce && ! empty( $_POST['jtc_shortio_refresh_qr'] );
-		$pull_remote   = $has_nonce && ! empty( $_POST['jtc_shortio_pull_remote'] );
+		$manual_sync   = $has_nonce && '' !== jtc_post_input( 'jtc_shortio_sync' );
+		$refresh_qr    = $has_nonce && '' !== jtc_post_input( 'jtc_shortio_refresh_qr' );
+		$pull_remote   = $has_nonce && '' !== jtc_post_input( 'jtc_shortio_pull_remote' );
 		$auto_create   = (bool) get_option( 'jtc_shortio_auto_create', 0 );
 		$path_changed  = $has_nonce && ( $old_custom_path !== $custom_path || $old_sync_slug !== $sync_slug );
 		$current_slug  = (string) get_post_field( 'post_name', $post_id );
@@ -719,15 +791,17 @@ class JTC_Post_Types {
 		if ( $notice_text ) {
 			set_transient(
 				'jtc_shortio_notice_' . get_current_user_id(),
-				[
+				array(
 					'status' => $notice_status,
 					'text'   => $notice_text,
-				],
+				),
 				MINUTE_IN_SECONDS
 			);
 		}
 	}
-
+	/**
+	 * Shortio admin notices.
+	 */
 	public function shortio_admin_notices(): void {
 		$notice = get_transient( 'jtc_shortio_notice_' . get_current_user_id() );
 		if ( ! is_array( $notice ) || empty( $notice['text'] ) ) {

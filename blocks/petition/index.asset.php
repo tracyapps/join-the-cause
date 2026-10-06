@@ -1,4 +1,6 @@
 <?php
+// phpcs:ignoreFile WordPress.Files.FileName.NotHyphenatedLowercase -- Required WordPress block/template filename convention.
+
 /**
  * Asset metadata for the jtc/petition block editor script.
  *

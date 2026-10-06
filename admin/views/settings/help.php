@@ -9,8 +9,12 @@
  * @package JoinTheCause
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit;
-if ( ! current_user_can( 'manage_options' ) ) wp_die( __( 'Not allowed.', 'join-the-cause' ) );
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+if ( ! current_user_can( 'manage_options' ) ) {
+	wp_die( esc_html__( 'Not allowed.', 'join-the-cause' ) );
+}
 
 $jtc_shortio          = new JTC_Short_IO();
 $jtc_new_petition_url = admin_url( 'post-new.php?post_type=' . JTC_CPT );
@@ -21,19 +25,19 @@ $jtc_email_url        = admin_url( 'admin.php?page=join-the-cause&tab=email' );
 $jtc_integrations_url = admin_url( 'admin.php?page=join-the-cause&tab=integrations' );
 $jtc_shortio_api_url  = 'https://app.short.io/settings/integrations/api-key';
 
-$jtc_debug_lines = [
-	'WordPress: '        . get_bloginfo( 'version' ),
-	'PHP: '              . PHP_VERSION,
-	'Plugin: '           . 'Join the Cause ' . JTC_VERSION,
+$jtc_debug_lines = array(
+	'WordPress: ' . get_bloginfo( 'version' ),
+	'PHP: ' . PHP_VERSION,
+	'Plugin: Join the Cause ' . JTC_VERSION,
 	'GD image library: ' . ( function_exists( 'imagecreatetruecolor' ) && function_exists( 'imagepng' ) ? 'available' : 'NOT available' ),
-	'Mailer: '           . get_option( 'jtc_email_method', 'wp_mail' ),
+	'Mailer: ' . get_option( 'jtc_email_method', 'wp_mail' ),
 	'Last mailer error: ' . ( get_option( 'jtc_last_mailer_error' )
 		? get_option( 'jtc_last_mailer_error' ) . ' (' . get_option( 'jtc_last_mailer_error_time' ) . ')'
 		: 'none' ),
-	'Short.io: '         . ( $jtc_shortio->is_configured() ? 'configured (' . $jtc_shortio->get_domain() . ')' : 'not configured' ),
+	'Short.io: ' . ( $jtc_shortio->is_configured() ? 'configured (' . $jtc_shortio->get_domain() . ')' : 'not configured' ),
 	'Proxy headers trusted: ' . ( defined( 'JTC_TRUST_PROXY_HEADERS' ) && JTC_TRUST_PROXY_HEADERS ? 'yes' : 'no' ),
-	'Color mode: '       . get_option( 'jtc_color_mode', 'preset' ) . ' / preset: ' . get_option( 'jtc_preset_theme', 'evergreen' ),
-];
+	'Color mode: ' . get_option( 'jtc_color_mode', 'preset' ) . ' / preset: ' . get_option( 'jtc_preset_theme', 'evergreen' ),
+);
 ?>
 <div class="jtc-tab-content jtc-help">
 

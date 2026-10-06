@@ -5,6 +5,8 @@
  * generated uploads, QR attachments, and petition posts — for every site
  * on multisite networks.
  *
+ * @package JoinTheCause
+ *
  * Does NOT run on deactivation — data is preserved across deactivate/reactivate cycles.
  */
 
@@ -28,13 +30,17 @@ function jtc_uninstall_site(): void {
 		if ( is_array( $jtc_pngs ) ) {
 			foreach ( $jtc_pngs as $jtc_file ) {
 				if ( is_file( $jtc_file ) ) {
-					@unlink( $jtc_file ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+					wp_delete_file( $jtc_file ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 				}
 			}
 		}
 
 		if ( is_dir( $jtc_dir ) ) {
-			@rmdir( $jtc_dir ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			global $wp_filesystem;
+			if ( WP_Filesystem() && $wp_filesystem ) {
+				$wp_filesystem->rmdir( $jtc_dir );
+			}
 		}
 	}
 
@@ -50,12 +56,18 @@ function jtc_uninstall_site(): void {
 		}
 	}
 
+	wp_clear_scheduled_hook( 'jtc_newsletter_batch' );
+	wp_clear_scheduled_hook( 'jtc_signature_mail' );
+
 	// ── Custom tables ─────────────────────────────────────────────────────
 	$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}jtc_supporters" );  // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 	$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}jtc_newsletters" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 
+	$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}jtc_rate_limits" );
+	$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}jtc_deliveries" );
+
 	// ── Options (explicit list + prefix sweep for future keys) ─────────────
-	$option_keys = [
+	$option_keys = array(
 		'jtc_color_mode',
 		'jtc_preset_theme',
 		'jtc_custom_primary',
@@ -98,7 +110,7 @@ function jtc_uninstall_site(): void {
 		'jtc_petition_defaults',
 		'jtc_trace_migration',
 		'jtc_db_version',
-	];
+	);
 
 	foreach ( $option_keys as $key ) {
 		delete_option( $key );
@@ -115,8 +127,8 @@ function jtc_uninstall_site(): void {
 	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $timeout_like ) );   // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 
 	// ── Post meta (form fields, settings, Short.io, tracker fields) ────────
-	$wpdb->delete( $wpdb->postmeta, [ 'meta_key' => '_jtc_form_fields' ] );       // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-	$wpdb->delete( $wpdb->postmeta, [ 'meta_key' => '_jtc_petition_settings' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+	$wpdb->delete( $wpdb->postmeta, array( 'meta_key' => '_jtc_form_fields' ) );       // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+	$wpdb->delete( $wpdb->postmeta, array( 'meta_key' => '_jtc_petition_settings' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 	$wpdb->query( "DELETE FROM {$wpdb->postmeta} WHERE meta_key LIKE '\\_jtc\\_%'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 
 	// ── Petition posts + their meta ────────────────────────────────────────
@@ -131,10 +143,10 @@ function jtc_uninstall_site(): void {
 
 if ( is_multisite() ) {
 	$site_ids = get_sites(
-		[
+		array(
 			'fields' => 'ids',
 			'number' => 0,
-		]
+		)
 	);
 
 	foreach ( $site_ids as $site_id ) {

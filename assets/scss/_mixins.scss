@@ -8,15 +8,6 @@
   border-radius: $jtc-radius;
 }
 
-@mixin jtc-button-reset {
-  appearance: none;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  font: inherit;
-}
-
 @mixin jtc-card {
   background: $jtc-bg;
   border-radius: $jtc-radius-lg;
@@ -27,12 +18,6 @@
 
 @mixin jtc-mobile {
   @media (max-width: #{$jtc-bp-mobile}) {
-    @content;
-  }
-}
-
-@mixin jtc-tablet {
-  @media (max-width: #{$jtc-bp-tablet}) {
     @content;
   }
 }

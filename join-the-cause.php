@@ -3,15 +3,17 @@
  * Plugin Name:       Join the Cause
  * GitHub Plugin URI: https://github.com/tracyapps/join-the-cause
  * Description:       Petition and newsletter management for WordPress — create, manage, and share petitions with a change.org-style front end.
- * Version:           0.1.0
+ * Version:           0.2.0
  * Author:            Tracy Apps
  * Author URI:        https://github.com/tracyapps
  * License:           GPL-2.0+
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.txt
  * Text Domain:       join-the-cause
  * Domain Path:       /languages
- * Requires at least: 6.0
+ * Requires at least: 6.3
  * Requires PHP:      8.0
+ *
+ * @package JoinTheCause
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -20,26 +22,29 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-define( 'JTC_VERSION',          '0.1.0' );
-define( 'JTC_STYLE_VERSION',    '1' );
-define( 'JTC_DB_VERSION',       '2' );
-define( 'JTC_PLUGIN_FILE',      __FILE__ );
-define( 'JTC_PLUGIN_DIR',       plugin_dir_path( __FILE__ ) );
-define( 'JTC_PLUGIN_URL',       plugin_dir_url( __FILE__ ) );
-define( 'JTC_PLUGIN_BASENAME',  plugin_basename( __FILE__ ) );
-define( 'JTC_CPT',              'jtc_petition' );
+define( 'JTC_VERSION', '0.2.0' );
+define( 'JTC_STYLE_VERSION', '1' );
+define( 'JTC_DB_VERSION', '6' );
+define( 'JTC_PLUGIN_FILE', __FILE__ );
+define( 'JTC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+define( 'JTC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+define( 'JTC_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
+define( 'JTC_CPT', 'jtc_petition' );
 
 // ─── Autoload includes ────────────────────────────────────────────────────────
 
-$includes = [
+$includes = array(
 	'includes/class-jtc-activator.php',
 	'includes/class-jtc-post-types.php',
 	'includes/class-jtc-short-io.php',
+	'includes/petition-links.php',
 	'includes/class-jtc-mailer.php',
+	'includes/class-jtc-newsletter.php',
+	'includes/class-jtc-privacy.php',
 	'includes/class-jtc-form-handler.php',
 	'includes/class-jtc-shortcode.php',
 	'includes/class-jtc-block.php',
-];
+);
 
 foreach ( $includes as $file ) {
 	require_once JTC_PLUGIN_DIR . $file;
@@ -51,22 +56,105 @@ if ( is_admin() ) {
 
 // ─── Activation / deactivation hooks ─────────────────────────────────────────
 
-register_activation_hook( __FILE__, [ 'JTC_Activator', 'activate' ] );
-register_deactivation_hook( __FILE__, [ 'JTC_Activator', 'deactivate' ] );
+register_activation_hook( __FILE__, array( 'JTC_Activator', 'activate' ) );
+register_deactivation_hook( __FILE__, array( 'JTC_Activator', 'deactivate' ) );
 
 // ─── Bootstrap on plugins_loaded ─────────────────────────────────────────────
 
 add_action( 'plugins_loaded', 'jtc_init' );
+/**
+ * Scalar.
+ *
+ * @param mixed  $value Input value.
+ * @param string $fallback Default.
+ * @return string Result value.
+ */
+function jtc_scalar( $value, string $fallback = '' ): string {
+	return is_scalar( $value ) ? (string) $value : $fallback;
+}
 
+/**
+ * Read a scalar POST value, unslash once and sanitize for its storage context.
+ *
+ * @param string $key    POST field name.
+ * @param string $format Text, textarea, html or secret.
+ * @return string Sanitized scalar value.
+ */
+function jtc_post_input( string $key, string $format = 'text' ): string {
+	// phpcs:disable WordPress.Security.NonceVerification.Missing -- Only reads input; each mutation entrypoint verifies its nonce and capability.
+	$value = isset( $_POST[ $key ] ) && is_string( $_POST[ $key ] ) ? wp_unslash( $_POST[ $key ] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized by the explicit context branches below.
+	// phpcs:enable WordPress.Security.NonceVerification.Missing
+	if ( 'html' === $format ) {
+		return wp_kses_post( $value );
+	}
+	if ( 'textarea' === $format ) {
+		return sanitize_textarea_field( $value );
+	}
+	if ( 'secret' === $format ) {
+		// Do not strip meaningful password punctuation; secrets are never echoed.
+		return preg_replace( '/[\x00-\x1f\x7f]/', '', $value );
+	}
+	return sanitize_text_field( $value );
+}
+
+/**
+ * Preserve a nonempty value or return its explicit fallback.
+ *
+ * @param mixed $value    Preferred value.
+ * @param mixed $fallback Empty-value fallback.
+ * @return mixed Selected value.
+ */
+function jtc_fallback( $value, $fallback ) {
+	return $value ? $value : $fallback;
+}
+
+/**
+ * Get a secret from wp-config.php before consulting its non-autoloaded option.
+ *
+ * @param string $option Option.
+ * @return string Result value.
+ */
+function jtc_get_secret( string $option ): string {
+	$constant = strtoupper( $option );
+	return defined( $constant ) ? jtc_scalar( constant( $constant ) ) : jtc_scalar( get_option( $option, '' ) );
+}
+
+/**
+ * Unicode initial without requiring the optional mbstring extension.
+ *
+ * @param string $name Name.
+ * @return string Result value.
+ */
+function jtc_name_initial( string $name ): string {
+	return preg_match( '/^./us', $name, $matches ) ? $matches[0] : '';
+}
+
+/**
+ * Neutralize spreadsheet formula prefixes, including hidden whitespace.
+ *
+ * @param mixed $value Input value.
+ * @return string Result value.
+ */
+function jtc_csv_cell( $value ): string {
+	$value = jtc_scalar( $value );
+	return preg_match( '/^[\s\x00-\x1f]*[=+\-@]|^[\t\r\n]/u', $value ) ? "'" . $value : $value;
+}
+/**
+ * Register plugin components and deferred initialization.
+ */
 function jtc_init(): void {
 	add_image_size( 'jtc_social_card', 1200, 630, true );
 
-	// One-time migrations (preset rename, new DB indexes). Cheap: bail once flagged.
-	JTC_Activator::maybe_migrate();
-	JTC_Activator::maybe_upgrade_schema();
-
-	// Translations shipped with the plugin (GitHub distribution).
-	load_plugin_textdomain( 'join-the-cause', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+	// Translation-dependent migrations wait for init (required by WP 6.7+).
+	add_action(
+		'init',
+		static function (): void {
+			load_plugin_textdomain( 'join-the-cause', false, dirname( JTC_PLUGIN_BASENAME ) . '/languages' );
+			JTC_Activator::maybe_migrate();
+			JTC_Activator::maybe_upgrade_schema();
+		},
+		1
+	);
 
 	// Register CPT + meta boxes.
 	( new JTC_Post_Types() )->register();
@@ -79,6 +167,8 @@ function jtc_init(): void {
 
 	// Register AJAX form handlers.
 	( new JTC_Form_Handler() )->register();
+	( new JTC_Newsletter() )->register();
+	( new JTC_Privacy() )->register();
 
 	// Admin menus, settings, supporter/newsletter pages.
 	if ( is_admin() ) {
@@ -111,7 +201,7 @@ function jtc_output_css_vars(): void {
 		return; // Color mode "none": let the active theme handle all styling.
 	}
 
-	echo "<style id=\"jtc-theme-vars\">\n{$css}\n</style>\n";
+	echo "<style id=\"jtc-theme-vars\">\n{$css}\n</style>\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Values are validated and CSS-context sanitized by jtc_build_css_vars().
 	$GLOBALS['jtc_css_vars_emitted'] = true;
 }
 
@@ -119,6 +209,8 @@ function jtc_output_css_vars(): void {
  * Whether the current front-end request might render a petition.
  * Themes that render petitions from widgets/page builders can force output
  * through the jtc_should_output_css_vars filter.
+ *
+ * @return bool Result value.
  */
 function jtc_should_output_css_vars(): bool {
 	if ( is_singular( JTC_CPT ) ) {
@@ -149,6 +241,8 @@ function jtc_should_output_css_vars(): bool {
 /**
  * Builds the full CSS variable style (theme colors + style options).
  * Returns an empty string when styling is disabled ("none" mode).
+ *
+ * @return string Result value.
  */
 function jtc_build_css_vars(): string {
 	$mode = get_option( 'jtc_color_mode', 'preset' );
@@ -183,7 +277,7 @@ function jtc_build_css_vars(): string {
 }
 
 /**
- * Attaches the vars inline to the jtc-public handle when they could not be
+ * Attaches the vars inline to the jtc-public handle when they could not be.
  * printed in the head (petitions rendered late, e.g. by blocks or builders).
  * Prefer this over a duplicate wp_head tag: it only fires when needed.
  */
@@ -212,19 +306,22 @@ function jtc_maybe_add_inline_css_vars(): void {
 }
 
 /**
- * Identifies the plugin's own admin screens (settings, supporters,
+ * Identifies the plugin's own admin screens (settings, supporters,.
  * newsletter, petition CPT screens).
+ *
+ * @param mixed $screen WordPress admin screen.
+ * @return bool Result value.
  */
 function jtc_is_jtc_admin_screen( $screen ): bool {
 	if ( ! $screen || ! is_object( $screen ) ) {
 		return false;
 	}
 
-	$pages = [
+	$pages = array(
 		'toplevel_page_join-the-cause',
 		'join-the-cause_page_jtc-supporters',
 		'join-the-cause_page_jtc-newsletter',
-	];
+	);
 
 	if ( in_array( $screen->id, $pages, true ) ) {
 		return true;
@@ -234,61 +331,82 @@ function jtc_is_jtc_admin_screen( $screen ): bool {
 }
 
 /**
- * Custom mode: user-picked colors plus derived neutrals so switching modes
+ * Custom mode: user-picked colors plus derived neutrals so switching modes.
  * never leaves text/border/input values "inherit"-inconsistent.
+ *
+ * @return array Result value.
  */
 function jtc_custom_theme_colors(): array {
-	$surface  = sanitize_hex_color( get_option( 'jtc_custom_surface', '#ffffff' ) ) ?: '#ffffff';
-	$primary  = sanitize_hex_color( get_option( 'jtc_custom_primary', '#2d6a2d' ) ) ?: '#2d6a2d';
+	$surface  = jtc_fallback( sanitize_hex_color( get_option( 'jtc_custom_surface', '#ffffff' ) ), '#ffffff' );
+	$primary  = jtc_fallback( sanitize_hex_color( get_option( 'jtc_custom_primary', '#2d6a2d' ) ), '#2d6a2d' );
 	$neutrals = jtc_derive_neutral_colors( $surface );
 
-	return [
-		'primary'        => $primary,
-		'primary_dark'   => sanitize_hex_color( get_option( 'jtc_custom_secondary', '#1a3d1a' ) ) ?: '#1a3d1a',
-		'primary_light'  => sanitize_hex_color( get_option( 'jtc_custom_accent', '#f0faf0' ) ) ?: '#f0faf0',
-		'hero_from'      => sanitize_hex_color( get_option( 'jtc_custom_hero_from', '#245e2b' ) ) ?: '#245e2b',
-		'hero_to'        => sanitize_hex_color( get_option( 'jtc_custom_hero_to', '#4f8d33' ) ) ?: '#4f8d33',
-		'page_bg'        => sanitize_hex_color( get_option( 'jtc_custom_page_bg', '#f6f8f4' ) ) ?: '#f6f8f4',
-		'surface'        => $surface,
-		'surface_alt'    => sanitize_hex_color( get_option( 'jtc_custom_surface_alt', '#f3f7f0' ) ) ?: '#f3f7f0',
-		'border'         => sanitize_hex_color( get_option( 'jtc_custom_border', '#d8e2d2' ) ) ?: '#d8e2d2',
-		'text'           => $neutrals['text'],
-		'text_strong'    => $neutrals['text_strong'],
-		'text_muted'     => $neutrals['text_muted'],
-		'input_bg'       => $neutrals['input_bg'],
-		'button_text'    => jtc_contrast_text_color( $primary ),
-	];
+	return array(
+		'primary'           => $primary,
+		'primary_dark'      => jtc_fallback( sanitize_hex_color( get_option( 'jtc_custom_secondary', '#1a3d1a' ) ), '#1a3d1a' ),
+		'primary_light'     => jtc_fallback( sanitize_hex_color( get_option( 'jtc_custom_accent', '#f0faf0' ) ), '#f0faf0' ),
+		'hero_from'         => jtc_fallback( sanitize_hex_color( get_option( 'jtc_custom_hero_from', '#245e2b' ) ), '#245e2b' ),
+		'hero_to'           => jtc_fallback( sanitize_hex_color( get_option( 'jtc_custom_hero_to', '#4f8d33' ) ), '#4f8d33' ),
+		'page_bg'           => jtc_fallback( sanitize_hex_color( get_option( 'jtc_custom_page_bg', '#f6f8f4' ) ), '#f6f8f4' ),
+		'surface'           => $surface,
+		'surface_alt'       => jtc_fallback( sanitize_hex_color( get_option( 'jtc_custom_surface_alt', '#f3f7f0' ) ), '#f3f7f0' ),
+		'border'            => jtc_fallback( sanitize_hex_color( get_option( 'jtc_custom_border', '#d8e2d2' ) ), '#d8e2d2' ),
+		'text'              => $neutrals['text'],
+		'text_strong'       => $neutrals['text_strong'],
+		'text_muted'        => $neutrals['text_muted'],
+		'input_bg'          => $neutrals['input_bg'],
+		'button_text'       => jtc_contrast_text_color( $primary ),
+		'button_hover_text' => jtc_contrast_text_color( jtc_fallback( sanitize_hex_color( get_option( 'jtc_custom_secondary', '#1a3d1a' ) ), '#1a3d1a' ) ),
+		'hero_text'         => jtc_contrast_text_color( jtc_fallback( sanitize_hex_color( get_option( 'jtc_custom_hero_from', '#245e2b' ) ), '#245e2b' ) ),
+		'hero_copy_bg'      => jtc_fallback( sanitize_hex_color( get_option( 'jtc_custom_hero_from', '#245e2b' ) ), '#245e2b' ),
+	);
 }
 
 /**
  * Derives readable text + input colors for a given surface background.
  *
  * @return array{text:string,text_strong:string,text_muted:string,input_bg:string}
+ * @param string $surface Surface hex color.
  */
 function jtc_derive_neutral_colors( string $surface ): array {
-	if ( jtc_hex_luminance( $surface ) > 0.4 ) {
-		return [
-			'text'        => '#1c261b',
-			'text_strong' => '#111a10',
-			'text_muted'  => '#5d6f58',
-			'input_bg'    => '#ffffff',
-		];
-	}
-
-	return [
-		'text'        => '#edf5e9',
-		'text_strong' => '#ffffff',
-		'text_muted'  => '#b7c8ae',
-		'input_bg'    => '#111a10',
-	];
+	$text = jtc_contrast_text_color( $surface );
+	return array(
+		'text'        => $text,
+		'text_strong' => $text,
+		'text_muted'  => $text,
+		'input_bg'    => $surface,
+	);
 }
 
-/** Picks a readable text color (near-white or near-black) for a background. */
+/**
+ * Select the higher-contrast foreground by the WCAG luminance formula.
+ *
+ * @param string $background Background hex color.
+ * @return string Result value.
+ */
 function jtc_contrast_text_color( string $background ): string {
-	return jtc_hex_luminance( $background ) > 0.35 ? '#111a10' : '#ffffff';
+	$luminance = jtc_hex_luminance( $background );
+	return ( $luminance + 0.05 ) / 0.05 >= 1.05 / ( $luminance + 0.05 ) ? '#000000' : '#ffffff';
 }
 
-/** WCAG relative luminance of a hex color (0..1). */
+/**
+ * WCAG relative luminance of a hex color (0..1).
+ *
+ * @param string $foreground Foreground hex color.
+ * @param string $background Background hex color.
+ * @return float Result value.
+ */
+function jtc_contrast_ratio( string $foreground, string $background ): float {
+	$first  = jtc_hex_luminance( $foreground );
+	$second = jtc_hex_luminance( $background );
+	return ( max( $first, $second ) + 0.05 ) / ( min( $first, $second ) + 0.05 );
+}
+/**
+ * Hex luminance.
+ *
+ * @param string $hex Hex.
+ * @return float Result value.
+ */
 function jtc_hex_luminance( string $hex ): float {
 	$hex = sanitize_hex_color( $hex );
 
@@ -301,7 +419,7 @@ function jtc_hex_luminance( string $hex ): float {
 		$hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
 	}
 
-	$weights   = [ 0.2126, 0.7152, 0.0722 ];
+	$weights   = array( 0.2126, 0.7152, 0.0722 );
 	$luminance = 0.0;
 
 	for ( $i = 0; $i < 3; $i++ ) {
@@ -313,9 +431,14 @@ function jtc_hex_luminance( string $hex ): float {
 	return $luminance;
 }
 
-/** Strips characters that could break out of a CSS declaration context. */
+/**
+ * Strips characters that could break out of a CSS declaration context.
+ *
+ * @param string $value Input value.
+ * @return string Result value.
+ */
 function jtc_safe_css_value( string $value ): string {
-	return trim( str_replace( [ '<', '>', '{', '}', ';' ], '', $value ) );
+	return trim( str_replace( array( '<', '>', '{', '}', ';' ), '', $value ) );
 }
 
 /**
@@ -324,7 +447,7 @@ function jtc_safe_css_value( string $value ): string {
  * @return array<string, mixed>
  */
 function jtc_style_defaults(): array {
-	return [
+	return array(
 		'version'             => JTC_STYLE_VERSION,
 		'radius'              => 'default',
 		'shadow'              => 'default',
@@ -340,22 +463,30 @@ function jtc_style_defaults(): array {
 		'show_qr'             => 1,
 		'show_dek'            => 1,
 		'show_featured_image' => 1,
-	];
+	);
 }
 
-/** Returns the merged style option (saved values + defaults). */
+/**
+ * Returns the merged style option (saved values + defaults).
+ *
+ * @return array Result value.
+ */
 function jtc_get_style_options(): array {
 	static $options = null;
 
 	if ( null === $options ) {
-		$saved   = get_option( 'jtc_style', [] );
-		$options = wp_parse_args( is_array( $saved ) ? $saved : [], jtc_style_defaults() );
+		$saved   = get_option( 'jtc_style', array() );
+		$options = wp_parse_args( is_array( $saved ) ? $saved : array(), jtc_style_defaults() );
 	}
 
 	return $options;
 }
 
-/** Single style option accessor with fallback to defaults. */
+/**
+ * Single style option accessor with fallback to defaults.
+ *
+ * @param string $key Setting or field name.
+ */
 function jtc_get_style_option( string $key ) {
 	$options = jtc_get_style_options();
 
@@ -363,71 +494,71 @@ function jtc_get_style_option( string $key ) {
 }
 
 /**
- * Allowed values/schemas for style options. Each entry resolves a stored
+ * Allowed values/schemas for style options. Each entry resolves a stored.
  * token into validated CSS values at output time.
  *
  * @return array<string, mixed>
  */
 function jtc_style_maps(): array {
-	return [
-		'radius'         => [
-			'compact' => [ '4px', '6px' ],
-			'default' => [ '8px', '12px' ],
-			'round'   => [ '14px', '18px' ],
-			'pill'    => [ '999px', '999px' ],
-		],
-		'shadow'         => [
-			'none'    => [ 'none', 'none', 'none' ],
-			'subtle'  => [
+	return array(
+		'radius'       => array(
+			'compact' => array( '4px', '6px' ),
+			'default' => array( '8px', '12px' ),
+			'round'   => array( '14px', '18px' ),
+			'pill'    => array( '999px', '999px' ),
+		),
+		'shadow'       => array(
+			'none'    => array( 'none', 'none', 'none' ),
+			'subtle'  => array(
 				'0 1px 2px rgba(15, 23, 42, 0.06)',
 				'0 6px 20px rgba(15, 23, 42, 0.09)',
 				'0 14px 36px rgba(15, 23, 42, 0.13)',
-			],
-			'default' => [
+			),
+			'default' => array(
 				'0 1px 3px rgba(15, 23, 42, 0.08)',
 				'0 10px 30px rgba(15, 23, 42, 0.12)',
 				'0 22px 55px rgba(15, 23, 42, 0.18)',
-			],
-			'strong'  => [
+			),
+			'strong'  => array(
 				'0 2px 6px rgba(15, 23, 42, 0.16)',
 				'0 16px 42px rgba(15, 23, 42, 0.22)',
 				'0 32px 72px rgba(15, 23, 42, 0.30)',
-			],
-		],
-		'button_style'   => [ 'solid', 'outline' ],
-		'font_source'    => [
+			),
+		),
+		'button_style' => array( 'solid', 'outline' ),
+		'font_source'  => array(
 			'inherit' => 'inherit',
 			'system'  => '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif',
-		],
-		'panel_width'    => [ 340, 380, 420 ],
-		'content_max'    => [ 'none', '720px', '960px', '1140px', '1320px' ],
-		'hero_style'     => [ 'gradient', 'solid', 'minimal' ],
-	];
+		),
+		'panel_width'  => array( 340, 380, 420 ),
+		'content_max'  => array( 'none', '720px', '960px', '1140px', '1320px' ),
+		'hero_style'   => array( 'gradient', 'solid', 'minimal' ),
+	);
 }
 
 /**
  * Sanitizes raw POST data for the jtc_style option (typed, whitelisted).
  *
- * @param array<string, mixed> $raw
+ * @param array<string, mixed> $raw Raw values to validate.
  * @return array<string, mixed>
  */
 function jtc_sanitize_style_options( array $raw ): array {
 	$maps     = jtc_style_maps();
 	$defaults = jtc_style_defaults();
-	$clean    = [];
+	$clean    = array();
 
-	$enum = static function ( string $key, array $allowed, string $default ) use ( $raw ): string {
+	$enum = static function ( string $key, array $allowed, string $fallback ) use ( $raw ): string {
 		$value = isset( $raw[ $key ] ) && is_string( $raw[ $key ] ) ? $raw[ $key ] : '';
 
-		return in_array( $value, $allowed, true ) ? $value : $default;
+		return in_array( $value, $allowed, true ) ? $value : $fallback;
 	};
 
 	$clean['radius']       = $enum( 'radius', array_keys( $maps['radius'] ), $defaults['radius'] );
 	$clean['shadow']       = $enum( 'shadow', array_keys( $maps['shadow'] ), $defaults['shadow'] );
 	$clean['button_style'] = $enum( 'button_style', $maps['button_style'], $defaults['button_style'] );
 
-	$clean['font_source'] = $enum( 'font_source', [ 'inherit', 'system', 'custom' ], $defaults['font_source'] );
-	$font_custom          = trim( sanitize_text_field( wp_unslash( (string) ( $raw['font_custom'] ?? '' ) ) ) );
+	$clean['font_source'] = $enum( 'font_source', array( 'inherit', 'system', 'custom' ), $defaults['font_source'] );
+	$font_custom          = trim( sanitize_text_field( wp_unslash( jtc_scalar( $raw['font_custom'] ?? '' ) ) ) );
 	$clean['font_custom'] = trim( jtc_safe_css_value( $font_custom ), ", \t\n\r\0\x0B'\"" );
 
 	$clean['font_scale'] = max( 90, min( 110, absint( $raw['font_scale'] ?? $defaults['font_scale'] ) ) );
@@ -437,7 +568,7 @@ function jtc_sanitize_style_options( array $raw ): array {
 
 	$clean['content_max'] = $enum( 'content_max', $maps['content_max'], $defaults['content_max'] );
 	$clean['hero_style']  = $enum( 'hero_style', $maps['hero_style'], $defaults['hero_style'] );
-	$clean['hero_text']   = sanitize_hex_color( wp_unslash( (string) ( $raw['hero_text'] ?? '' ) ) ) ?: '';
+	$clean['hero_text']   = jtc_fallback( sanitize_hex_color( wp_unslash( jtc_scalar( $raw['hero_text'] ?? '' ) ) ), '' );
 
 	$clean['show_share']          = ! empty( $raw['show_share'] ) ? 1 : 0;
 	$clean['show_qr']             = ! empty( $raw['show_qr'] ) ? 1 : 0;
@@ -450,12 +581,15 @@ function jtc_sanitize_style_options( array $raw ): array {
 }
 
 /**
- * Emits the Layout & Style CSS variables. Values resolve through the
+ * Emits the Layout & Style CSS variables. Values resolve through the.
  * jtc_style_maps() schema, so only whitelisted tokens reach the stylesheet.
+ *
+ * @param array $style Validated layout and style settings.
+ * @return string Result value.
  */
 function jtc_style_vars_block( array $style ): string {
 	$maps  = jtc_style_maps();
-	$lines = [];
+	$lines = array();
 
 	$radius  = $maps['radius'][ $style['radius'] ?? '' ] ?? $maps['radius']['default'];
 	$lines[] = '  --jtc-radius: ' . esc_attr( $radius[0] ) . ';';
@@ -468,7 +602,7 @@ function jtc_style_vars_block( array $style ): string {
 
 	if ( 'outline' === ( $style['button_style'] ?? 'solid' ) ) {
 		$lines[] = '  --jtc-button-bg: transparent;';
-		$lines[] = '  --jtc-button-fg: var(--jtc-primary);';
+		$lines[] = '  --jtc-button-fg: var(--jtc-link);';
 		$lines[] = '  --jtc-button-border: var(--jtc-primary);';
 		$lines[] = '  --jtc-button-hover-bg: var(--jtc-primary);';
 		$lines[] = '  --jtc-button-hover-fg: var(--jtc-button-text, #ffffff);';
@@ -477,7 +611,7 @@ function jtc_style_vars_block( array $style ): string {
 		$lines[] = '  --jtc-button-fg: var(--jtc-button-text, #ffffff);';
 		$lines[] = '  --jtc-button-border: transparent;';
 		$lines[] = '  --jtc-button-hover-bg: var(--jtc-primary-dark);';
-		$lines[] = '  --jtc-button-hover-fg: var(--jtc-button-text, #ffffff);';
+		$lines[] = '  --jtc-button-hover-fg: var(--jtc-button-hover-text, #ffffff);';
 	}
 
 	$font_source = $style['font_source'] ?? 'inherit';
@@ -499,16 +633,11 @@ function jtc_style_vars_block( array $style ): string {
 	$content_max = in_array( $style['content_max'] ?? 'none', $maps['content_max'], true ) ? $style['content_max'] : 'none';
 	$lines[]     = '  --jtc-content-max: ' . esc_attr( $content_max ) . ';';
 
-	if ( ! empty( $style['hero_text'] ) ) {
-		$hero_text = sanitize_hex_color( (string) $style['hero_text'] );
-		if ( $hero_text ) {
-			$lines[] = '  --jtc-hero-text: ' . esc_attr( $hero_text ) . ';';
-		}
-	}
-
 	return ":root {\n" . implode( "\n", $lines ) . "\n}";
 }
-
+/**
+ * Output social meta.
+ */
 function jtc_output_social_meta(): void {
 	$petition_id = jtc_get_current_social_petition_id();
 	if ( ! $petition_id ) {
@@ -516,7 +645,7 @@ function jtc_output_social_meta(): void {
 	}
 
 	$petition = get_post( $petition_id );
-	if ( ! $petition || JTC_CPT !== $petition->post_type || 'publish' !== $petition->post_status ) {
+	if ( ! $petition || JTC_CPT !== $petition->post_type || 'publish' !== $petition->post_status || post_password_required( $petition ) ) {
 		return;
 	}
 
@@ -526,30 +655,30 @@ function jtc_output_social_meta(): void {
 		: wp_trim_words( wp_strip_all_tags( $petition->post_content ), 32, '' );
 	// No remote refresh in wp_head: social meta must never trigger a
 	// blocking Short.io request. Stored values are used as-is.
-	$url         = jtc_get_petition_share_url( $petition_id, false );
-	$image       = jtc_get_petition_social_image( $petition_id );
-	$site_name   = get_bloginfo( 'name' );
+	$url       = jtc_get_petition_share_url( $petition_id, false );
+	$image     = jtc_get_petition_social_image( $petition_id );
+	$site_name = get_bloginfo( 'name' );
 
-	$meta = [
-		[ 'property', 'og:type', 'article' ],
-		[ 'property', 'og:site_name', $site_name ],
-		[ 'property', 'og:title', $title ],
-		[ 'property', 'og:description', $description ],
-		[ 'property', 'og:url', $url ],
-		[ 'name', 'twitter:card', $image ? 'summary_large_image' : 'summary' ],
-		[ 'name', 'twitter:title', $title ],
-		[ 'name', 'twitter:description', $description ],
-	];
+	$meta = array(
+		array( 'property', 'og:type', 'article' ),
+		array( 'property', 'og:site_name', $site_name ),
+		array( 'property', 'og:title', $title ),
+		array( 'property', 'og:description', $description ),
+		array( 'property', 'og:url', $url ),
+		array( 'name', 'twitter:card', $image ? 'summary_large_image' : 'summary' ),
+		array( 'name', 'twitter:title', $title ),
+		array( 'name', 'twitter:description', $description ),
+	);
 
 	if ( $image ) {
-		$meta[] = [ 'property', 'og:image', $image['url'] ];
-		$meta[] = [ 'property', 'og:image:secure_url', $image['url'] ];
-		$meta[] = [ 'property', 'og:image:alt', $title ];
-		$meta[] = [ 'name', 'twitter:image', $image['url'] ];
+		$meta[] = array( 'property', 'og:image', $image['url'] );
+		$meta[] = array( 'property', 'og:image:secure_url', $image['url'] );
+		$meta[] = array( 'property', 'og:image:alt', $title );
+		$meta[] = array( 'name', 'twitter:image', $image['url'] );
 
 		if ( ! empty( $image['width'] ) && ! empty( $image['height'] ) ) {
-			$meta[] = [ 'property', 'og:image:width', (string) $image['width'] ];
-			$meta[] = [ 'property', 'og:image:height', (string) $image['height'] ];
+			$meta[] = array( 'property', 'og:image:width', (string) $image['width'] );
+			$meta[] = array( 'property', 'og:image:height', (string) $image['height'] );
 		}
 	}
 
@@ -558,13 +687,17 @@ function jtc_output_social_meta(): void {
 		$attr = 'property' === $item[0] ? 'property' : 'name';
 		printf(
 			'<meta %1$s="%2$s" content="%3$s">' . "\n",
-			$attr,
+			esc_attr( $attr ),
 			esc_attr( $item[1] ),
 			esc_attr( wp_strip_all_tags( (string) $item[2] ) )
 		);
 	}
 }
-
+/**
+ * Get current social petition id.
+ *
+ * @return int Result value.
+ */
 function jtc_get_current_social_petition_id(): int {
 	if ( is_singular( JTC_CPT ) ) {
 		return (int) get_queried_object_id();
@@ -575,8 +708,25 @@ function jtc_get_current_social_petition_id(): int {
 	}
 
 	$post = get_post();
-	if ( ! $post || false === strpos( $post->post_content, '[jtc_petition' ) ) {
+	if ( ! $post || post_password_required( $post ) ) {
 		return 0;
+	}
+
+	$find_block = static function ( array $blocks ) use ( &$find_block ): int {
+		foreach ( $blocks as $block ) {
+			if ( 'jtc/petition' === ( $block['blockName'] ?? '' ) ) {
+				return absint( $block['attrs']['petitionId'] ?? 0 );
+			}
+			$id = $find_block( $block['innerBlocks'] ?? array() );
+			if ( $id ) {
+				return $id;
+			}
+		}
+		return 0;
+	};
+	$block_id   = $find_block( parse_blocks( $post->post_content ) );
+	if ( $block_id ) {
+		return $block_id;
 	}
 
 	if ( preg_match( '/\[jtc_petition[^\]]*id=[\'"]?(\d+)/', $post->post_content, $matches ) ) {
@@ -585,7 +735,12 @@ function jtc_get_current_social_petition_id(): int {
 
 	return 0;
 }
-
+/**
+ * Get petition social image.
+ *
+ * @param int $petition_id Petition post ID.
+ * @return array Result value.
+ */
 function jtc_get_petition_social_image( int $petition_id ): array {
 	$attachment_id = get_post_thumbnail_id( $petition_id );
 
@@ -603,65 +758,70 @@ function jtc_get_petition_social_image( int $petition_id ): array {
 
 		$image = wp_get_attachment_image_src( $attachment_id, 'jtc_social_card' );
 		if ( $image ) {
-			return [
+			return array(
 				'url'    => $image[0],
 				'width'  => (int) $image[1],
 				'height' => (int) $image[2],
-			];
+			);
 		}
 	}
 
 	$site_icon = get_site_icon_url( 512 );
 	if ( $site_icon ) {
-		return [
+		return array(
 			'url'    => $site_icon,
 			'width'  => 512,
 			'height' => 512,
-		];
+		);
 	}
 
-	return [];
+	return array();
 }
-
+/**
+ * Get generated logo social card.
+ *
+ * @param int $attachment_id Media attachment ID.
+ * @return array Result value.
+ */
 function jtc_get_generated_logo_social_card( int $attachment_id ): array {
 	if ( ! function_exists( 'imagecreatetruecolor' ) ) {
-		return [];
+		return array();
 	}
 
 	$source_file = get_attached_file( $attachment_id );
 	if ( ! $source_file || ! file_exists( $source_file ) ) {
-		return [];
+		return array();
 	}
 
 	$upload_dir = wp_upload_dir();
 	if ( ! empty( $upload_dir['error'] ) ) {
-		return [];
+		return array();
 	}
 
 	$dir = trailingslashit( $upload_dir['basedir'] ) . 'join-the-cause';
 	if ( ! wp_mkdir_p( $dir ) ) {
-		return [];
+		return array();
 	}
 
 	$target_file = trailingslashit( $dir ) . 'social-card-logo-' . $attachment_id . '.png';
 	$target_url  = trailingslashit( $upload_dir['baseurl'] ) . 'join-the-cause/social-card-logo-' . $attachment_id . '.png';
 
 	if ( file_exists( $target_file ) && filemtime( $target_file ) >= filemtime( $source_file ) ) {
-		return [
+		return array(
 			'url'    => $target_url,
 			'width'  => 1200,
 			'height' => 630,
-		];
+		);
 	}
 
 	$source_contents = file_get_contents( $source_file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 	if ( ! $source_contents ) {
-		return [];
+		return array();
 	}
 
 	$logo = imagecreatefromstring( $source_contents );
 	if ( ! $logo ) {
-		return [];
+		return array();
 	}
 
 	$canvas = imagecreatetruecolor( 1200, 630 );
@@ -671,14 +831,14 @@ function jtc_get_generated_logo_social_card( int $attachment_id ): array {
 	$logo_w = imagesx( $logo );
 	$logo_h = imagesy( $logo );
 	if ( ! $logo_w || ! $logo_h ) {
-		imagedestroy( $logo );
-		imagedestroy( $canvas );
-		return [];
+		unset( $logo );
+		unset( $canvas );
+		return array();
 	}
 
-	$max_w = 560;
-	$max_h = 280;
-	$scale = min( $max_w / $logo_w, $max_h / $logo_h, 1 );
+	$max_w  = 560;
+	$max_h  = 280;
+	$scale  = min( $max_w / $logo_w, $max_h / $logo_h, 1 );
 	$dest_w = max( 1, (int) round( $logo_w * $scale ) );
 	$dest_h = max( 1, (int) round( $logo_h * $scale ) );
 	$dest_x = (int) round( ( 1200 - $dest_w ) / 2 );
@@ -690,18 +850,18 @@ function jtc_get_generated_logo_social_card( int $attachment_id ): array {
 
 	$ok = imagepng( $canvas, $target_file );
 
-	imagedestroy( $logo );
-	imagedestroy( $canvas );
+	unset( $logo );
+	unset( $canvas );
 
 	if ( ! $ok ) {
-		return [];
+		return array();
 	}
 
-	return [
+	return array(
 		'url'    => $target_url,
 		'width'  => 1200,
 		'height' => 630,
-	];
+	);
 }
 
 /**
@@ -714,8 +874,8 @@ function jtc_get_generated_logo_social_card( int $attachment_id ): array {
  * @return array<string, array<string, mixed>>
  */
 function jtc_get_preset_themes(): array {
-	return [
-		'evergreen' => [
+	return array(
+		'evergreen' => array(
 			'label'         => __( 'Evergreen', 'join-the-cause' ),
 			'primary'       => '#2d6a2d',
 			'primary_dark'  => '#173f1d',
@@ -730,7 +890,7 @@ function jtc_get_preset_themes(): array {
 			'text_muted'    => '#5d6f58',
 			'border'        => '#dbe7d2',
 			'button_text'   => '#ffffff',
-			'dark'          => [
+			'dark'          => array(
 				'primary'       => '#8bcf65',
 				'primary_dark'  => '#b4e38d',
 				'primary_light' => '#18341a',
@@ -745,9 +905,9 @@ function jtc_get_preset_themes(): array {
 				'border'        => '#33452c',
 				'input_bg'      => '#111a10',
 				'button_text'   => '#0f160f',
-			],
-		],
-		'change' => [
+			),
+		),
+		'change'    => array(
 			'label'         => __( 'Civic Red', 'join-the-cause' ),
 			'primary'       => '#e12729',
 			'primary_dark'  => '#a41416',
@@ -762,7 +922,7 @@ function jtc_get_preset_themes(): array {
 			'text_muted'    => '#725a58',
 			'border'        => '#f1d4d0',
 			'button_text'   => '#ffffff',
-			'dark'          => [
+			'dark'          => array(
 				'primary'       => '#ff8a7a',
 				'primary_dark'  => '#ffb3a6',
 				'primary_light' => '#3a1512',
@@ -777,9 +937,9 @@ function jtc_get_preset_themes(): array {
 				'border'        => '#4a2b28',
 				'input_bg'      => '#180f0e',
 				'button_text'   => '#33100c',
-			],
-		],
-		'blue' => [
+			),
+		),
+		'blue'      => array(
 			'label'         => __( 'Trust Blue', 'join-the-cause' ),
 			'primary'       => '#1a5276',
 			'primary_dark'  => '#0e2f44',
@@ -794,7 +954,7 @@ function jtc_get_preset_themes(): array {
 			'text_muted'    => '#536577',
 			'border'        => '#d6e2ec',
 			'button_text'   => '#ffffff',
-			'dark'          => [
+			'dark'          => array(
 				'primary'       => '#8fc7ea',
 				'primary_dark'  => '#b5dbf4',
 				'primary_light' => '#12293a',
@@ -809,9 +969,9 @@ function jtc_get_preset_themes(): array {
 				'border'        => '#2a3d4c',
 				'input_bg'      => '#0d141b',
 				'button_text'   => '#0e2636',
-			],
-		],
-		'teal' => [
+			),
+		),
+		'teal'      => array(
 			'label'         => __( 'Organizing Teal', 'join-the-cause' ),
 			'primary'       => '#0e6b6b',
 			'primary_dark'  => '#074040',
@@ -826,7 +986,7 @@ function jtc_get_preset_themes(): array {
 			'text_muted'    => '#55716e',
 			'border'        => '#cfe5e2',
 			'button_text'   => '#ffffff',
-			'dark'          => [
+			'dark'          => array(
 				'primary'       => '#6fd7c3',
 				'primary_dark'  => '#9de6d8',
 				'primary_light' => '#0f2c28',
@@ -841,9 +1001,9 @@ function jtc_get_preset_themes(): array {
 				'border'        => '#27403b',
 				'input_bg'      => '#0b1514',
 				'button_text'   => '#0c2a24',
-			],
-		],
-		'purple' => [
+			),
+		),
+		'purple'    => array(
 			'label'         => __( 'Community Purple', 'join-the-cause' ),
 			'primary'       => '#6b2d8b',
 			'primary_dark'  => '#3d1454',
@@ -858,7 +1018,7 @@ function jtc_get_preset_themes(): array {
 			'text_muted'    => '#6b5b73',
 			'border'        => '#e4d6eb',
 			'button_text'   => '#ffffff',
-			'dark'          => [
+			'dark'          => array(
 				'primary'       => '#c9a0e0',
 				'primary_dark'  => '#ddc2ec',
 				'primary_light' => '#2b1938',
@@ -873,36 +1033,67 @@ function jtc_get_preset_themes(): array {
 				'border'        => '#3a2a48',
 				'input_bg'      => '#120d17',
 				'button_text'   => '#2c1440',
-			],
-		],
-	];
+			),
+		),
+	);
 }
 
 /**
  * Convert a theme array into a CSS variable block.
  *
- * @param string $selector CSS selector.
+ * @param string               $selector CSS selector.
  * @param array<string, mixed> $colors Theme colors.
+ * @return string Result value.
  */
 function jtc_theme_vars_block( string $selector, array $colors ): string {
-	$map = [
-		'primary'       => '--jtc-primary',
-		'primary_dark'  => '--jtc-primary-dark',
-		'primary_light' => '--jtc-primary-light',
-		'hero_from'     => '--jtc-hero-from',
-		'hero_to'       => '--jtc-hero-to',
-		'page_bg'       => '--jtc-page-bg',
-		'surface'       => '--jtc-surface',
-		'surface_alt'   => '--jtc-surface-alt',
-		'text'          => '--jtc-text',
-		'text_strong'   => '--jtc-text-strong',
-		'text_muted'    => '--jtc-text-muted',
-		'border'        => '--jtc-border',
-		'input_bg'      => '--jtc-input-bg',
-		'button_text'   => '--jtc-button-text',
-	];
+	$dark    = jtc_hex_luminance( $colors['surface'] ?? '#ffffff' ) < 0.18;
+	$colors += array(
+		'error'             => $dark ? '#ff9b94' : '#a51f16',
+		'error_bg'          => $dark ? '#351b1a' : '#fdedec',
+		'success'           => $dark ? '#a6e6b2' : '#155b28',
+		'success_bg'        => $dark ? '#142d1c' : '#eafaf1',
+		'button_hover_text' => jtc_contrast_text_color( $colors['primary_dark'] ?? '#1a3d1a' ),
+	);
+	$surface = $colors['surface'] ?? '#ffffff';
+	foreach ( array( 'error', 'success' ) as $key ) {
+		if ( jtc_contrast_ratio( $colors[ $key ], $surface ) < 4.5 ) {
+			$colors[ $key ]         = jtc_contrast_text_color( $surface );
+			$colors[ $key . '_bg' ] = $surface;
+		}
+	}
+	$colors['link']         = jtc_contrast_ratio( $colors['primary'], $surface ) >= 4.5 ? $colors['primary'] : jtc_contrast_text_color( $surface );
+	$colors['link_strong']  = jtc_contrast_ratio( $colors['primary_dark'], $colors['primary_light'] ) >= 4.5 ? $colors['primary_dark'] : jtc_contrast_text_color( $colors['primary_light'] );
+	$colors['hero_copy_bg'] = $colors['hero_from'];
+	$style                  = jtc_get_style_options();
+	$requested              = sanitize_hex_color( jtc_scalar( $style['hero_text'] ?? '' ) );
+	$colors['hero_text']    = $requested && jtc_contrast_ratio( $requested, $colors['hero_copy_bg'] ) >= 4.5 ? $requested : jtc_contrast_text_color( $colors['hero_copy_bg'] );
+	$map                    = array(
+		'link'              => '--jtc-link',
+		'link_strong'       => '--jtc-link-strong',
+		'error'             => '--jtc-error',
+		'error_bg'          => '--jtc-error-bg',
+		'success'           => '--jtc-success',
+		'success_bg'        => '--jtc-success-bg',
+		'hero_text'         => '--jtc-hero-text',
+		'hero_copy_bg'      => '--jtc-hero-copy-bg',
+		'button_hover_text' => '--jtc-button-hover-text',
+		'primary'           => '--jtc-primary',
+		'primary_dark'      => '--jtc-primary-dark',
+		'primary_light'     => '--jtc-primary-light',
+		'hero_from'         => '--jtc-hero-from',
+		'hero_to'           => '--jtc-hero-to',
+		'page_bg'           => '--jtc-page-bg',
+		'surface'           => '--jtc-surface',
+		'surface_alt'       => '--jtc-surface-alt',
+		'text'              => '--jtc-text',
+		'text_strong'       => '--jtc-text-strong',
+		'text_muted'        => '--jtc-text-muted',
+		'border'            => '--jtc-border',
+		'input_bg'          => '--jtc-input-bg',
+		'button_text'       => '--jtc-button-text',
+	);
 
-	$lines = [ $selector . ' {' ];
+	$lines = array( $selector . ' {' );
 	foreach ( $map as $key => $var ) {
 		if ( empty( $colors[ $key ] ) || ! is_string( $colors[ $key ] ) ) {
 			continue;
@@ -921,7 +1112,12 @@ function jtc_theme_vars_block( string $selector, array $colors ): string {
 	$lines[] = '}';
 	return implode( "\n", $lines );
 }
-
+/**
+ * Hex to rgb string.
+ *
+ * @param string $hex Hex.
+ * @return string Result value.
+ */
 function jtc_hex_to_rgb_string( string $hex ): string {
 	$hex = sanitize_hex_color( $hex );
 	if ( ! $hex ) {

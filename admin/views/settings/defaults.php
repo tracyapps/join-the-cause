@@ -8,9 +8,11 @@
  * @package JoinTheCause
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
-$defaults = get_option( 'jtc_petition_defaults', [] );
+$defaults = get_option( 'jtc_petition_defaults', array() );
 ?>
 <div class="jtc-tab-content">
 	<h2><?php esc_html_e( 'Petition Defaults', 'join-the-cause' ); ?></h2>
@@ -86,9 +88,9 @@ $defaults = get_option( 'jtc_petition_defaults', [] );
 				<fieldset>
 					<legend class="screen-reader-text"><?php esc_html_e( 'Share services', 'join-the-cause' ); ?></legend>
 					<?php
-					$saved_shares = (array) ( $defaults['share_buttons'] ?? [] );
-					foreach ( [ 'facebook', 'twitter', 'copy', 'embed' ] as $svc ) :
-					?>
+					$saved_shares = (array) ( $defaults['share_buttons'] ?? array() );
+					foreach ( array( 'facebook', 'twitter', 'copy', 'embed' ) as $svc ) :
+						?>
 					<label style="display:inline-block;margin-right:16px;">
 						<input type="checkbox" name="jtc_share_buttons[]" value="<?php echo esc_attr( $svc ); ?>"
 							<?php checked( in_array( $svc, $saved_shares, true ) ); ?>>

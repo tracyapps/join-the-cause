@@ -88,6 +88,11 @@
 }
 
 .jtc-petition__intro {
+  background: var(--jtc-hero-copy-bg, transparent);
+  border-radius: $jtc-radius;
+  padding: 12px;
+  position: relative;
+  z-index: 1;
   position: relative;
   z-index: 1;
   min-width: 0;
@@ -187,7 +192,7 @@
   font-size: 1rem;
   font-weight: 700;
   margin: 0 0 12px;
-  color: $jtc-primary-dark;
+  color: var(--jtc-link-strong, #1a3d1a);
 }
 
 .jtc-recent-signers__list {
@@ -207,7 +212,7 @@
 
   &::before {
     content: '✓' / '';
-    color: $jtc-primary;
+    color: var(--jtc-link, #2d6a2d);
     font-weight: 700;
     flex-shrink: 0;
   }
@@ -258,8 +263,8 @@
   &:focus-visible { @include jtc-focus; }
 
   &:hover {
-    border-color: $jtc-primary;
-    color: $jtc-primary;
+    border-color: var(--jtc-link, #2d6a2d);
+    color: var(--jtc-link, #2d6a2d);
   }
 
   &--facebook:hover {
@@ -326,8 +331,8 @@
   cursor: pointer;
 
   &:hover {
-    border-color: $jtc-primary;
-    color: $jtc-primary;
+    border-color: var(--jtc-link, #2d6a2d);
+    color: var(--jtc-link, #2d6a2d);
   }
 
   &:focus-visible { @include jtc-focus; }
@@ -411,7 +416,7 @@
   display: block;
   font-size: 2.4rem;
   font-weight: 800;
-  color: $jtc-primary;
+  color: var(--jtc-link, #2d6a2d);
   line-height: 1;
 }
 
@@ -501,7 +506,7 @@
   }
 
   &:focus {
-    border-color: $jtc-primary;
+    border-color: var(--jtc-link, #2d6a2d);
     @include jtc-focus;
   }
 
@@ -531,7 +536,7 @@
   width: 18px;
   height: 18px;
   cursor: pointer;
-  accent-color: $jtc-primary;
+  accent-color: var(--jtc-link, #2d6a2d);
 
   &:focus-visible { @include jtc-focus; }
 }
@@ -561,15 +566,15 @@
 
   &.jtc-status--error {
     padding: 10px 14px;
-    background: #fdedec;
-    border: 1px solid #fadbd8;
+    background: var(--jtc-error-bg, #fdedec);
+    border: 1px solid $jtc-error-color;
     color: $jtc-error-color;
   }
 
   &.jtc-status--success {
     padding: 10px 14px;
-    background: #eafaf1;
-    border: 1px solid #d4edda;
+    background: var(--jtc-success-bg, #eafaf1);
+    border: 1px solid $jtc-success-color;
     color: $jtc-success-color;
   }
 }
@@ -617,7 +622,7 @@
 
   &:focus-visible {
     @include jtc-focus;
-    outline-color: $jtc-primary-dark;
+    outline-color: var(--jtc-link-strong, #1a3d1a);
   }
 
   &:disabled {
@@ -634,7 +639,7 @@
   background: $jtc-primary-light;
   border: 2px solid $jtc-primary;
   border-radius: $jtc-radius-lg;
-  color: $jtc-primary-dark;
+  color: var(--jtc-link-strong, #1a3d1a);
   font-weight: 600;
   text-align: center;
   line-height: 1.5;
@@ -696,8 +701,8 @@
   margin: 0;
   padding: 10px 14px;
   border-radius: $jtc-radius;
-  background: #fdedec;
-  border: 1px solid #fadbd8;
+  background: var(--jtc-error-bg, #fdedec);
+  border: 1px solid $jtc-error-color;
   color: $jtc-error-color;
   font-size: .9rem;
   line-height: 1.5;

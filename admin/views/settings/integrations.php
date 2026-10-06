@@ -8,9 +8,11 @@
  * @package JoinTheCause
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
-$shortio_key        = (string) get_option( 'jtc_shortio_api_key', '' );
+$shortio_key        = (string) jtc_get_secret( 'jtc_shortio_api_key' );
 $shortio_key_saved  = '' !== $shortio_key;
 $shortio_key_hint   = $shortio_key_saved ? str_repeat( '•', 8 ) . substr( $shortio_key, -4 ) : '';
 $shortio_configured = ( new JTC_Short_IO() )->is_configured();

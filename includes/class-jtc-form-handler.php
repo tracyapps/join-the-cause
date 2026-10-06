@@ -4,7 +4,7 @@
  *
  * Security:  nonce verification + sanitisation + prepared statements.
  * Duplicate: one email address per petition (SELECT fast-path + unique index).
- * Rate limit: 5 submissions per IP per hour (via transients, filterable).
+ * Rate limit: atomic database buckets, counting every nonce-valid attempt.
  * Bot checks: honeypot field + minimum fill time (fails open for humans).
  *
  * @package JoinTheCause
@@ -14,162 +14,170 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/** Form Handler WordPress component. */
 class JTC_Form_Handler {
-
+	/**
+	 * Register WordPress hooks for this component.
+	 */
 	public function register(): void {
-		add_action( 'wp_ajax_jtc_sign_petition',        [ $this, 'handle' ] );
-		add_action( 'wp_ajax_nopriv_jtc_sign_petition', [ $this, 'handle' ] );
+		add_action( 'wp_ajax_jtc_sign_petition', array( $this, 'handle' ) );
+		add_action( 'wp_ajax_nopriv_jtc_sign_petition', array( $this, 'handle' ) );
+		add_action( 'jtc_signature_mail', array( $this, 'send_signature_mail' ) );
+		add_action( 'jtc_cleanup_rates', array( $this, 'cleanup_rates' ) );
 	}
 
 	// ─── Main handler ─────────────────────────────────────────────────────────
-
+	/**
+	 * Validate and save one petition signature.
+	 */
 	public function handle(): void {
-		// Verify nonce.
-		$nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
-		if ( ! wp_verify_nonce( $nonce, 'jtc_sign_petition' ) ) {
-			wp_send_json_error( [ 'message' => __( 'Security check failed. Please refresh and try again.', 'join-the-cause' ) ], 403 );
+		$petition_id = absint( jtc_post_input( 'petition_id' ) );
+		$nonce       = sanitize_text_field( jtc_post_input( 'nonce' ) );
+		if ( ! wp_verify_nonce( $nonce, 'jtc_sign_petition_' . $petition_id ) ) {
+			wp_send_json_error( array( 'message' => __( 'Security check failed. Please refresh and try again.', 'join-the-cause' ) ), 403 );
+		}
+		$petition = get_post( $petition_id );
+		if ( ! $petition || JTC_CPT !== $petition->post_type || 'publish' !== $petition->post_status || post_password_required( $petition ) ) {
+			wp_send_json_error( array( 'message' => __( 'Petition not found.', 'join-the-cause' ) ), 404 );
+		}
+		if ( '1' !== (string) get_option( 'jtc_signature_index_ready', '0' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Signing is temporarily unavailable. Please try again later.', 'join-the-cause' ) ), 503 );
 		}
 
-		// Petition ID.
-		$petition_id = isset( $_POST['petition_id'] ) ? absint( $_POST['petition_id'] ) : 0;
-		if ( ! $petition_id || JTC_CPT !== get_post_type( $petition_id ) || 'publish' !== get_post_status( $petition_id ) ) {
-			wp_send_json_error( [ 'message' => __( 'Petition not found.', 'join-the-cause' ) ], 404 );
+		$allowed = $this->consume_attempt( $this->get_ip(), $petition_id );
+		if ( is_wp_error( $allowed ) ) {
+			wp_send_json_error( array( 'message' => $allowed->get_error_message() ), 503 );
 		}
-
-		// Bot mitigation: honeypot + minimum fill time. Friendly, non-specific
-		// message; generous thresholds so real people never trip it.
+		if ( ! $allowed ) {
+			wp_send_json_error( array( 'message' => __( 'Too many submissions. Please try again later.', 'join-the-cause' ) ), 429 );
+		}
 		if ( ! $this->passes_bot_checks() ) {
-			wp_send_json_error( [ 'message' => __( 'Could not process the form. Please try again.', 'join-the-cause' ) ], 403 );
+			wp_send_json_error( array( 'message' => __( 'Could not process the form. Please try again.', 'join-the-cause' ) ), 403 );
 		}
-
-		// Rate limit: max 5 submissions per IP per hour (filterable).
-		$ip          = $this->get_ip();
-		$rate_key    = 'jtc_rate_' . md5( $ip );
-		$rate_count  = (int) get_transient( $rate_key );
-		$rate_max    = (int) apply_filters( 'jtc_rate_limit_max', 5, $petition_id );
-		$rate_window = (int) apply_filters( 'jtc_rate_limit_window', HOUR_IN_SECONDS, $petition_id );
-
-		if ( $rate_count >= max( 1, $rate_max ) ) {
-			wp_send_json_error( [ 'message' => __( 'Too many submissions. Please try again later.', 'join-the-cause' ) ], 429 );
+		$first_name = sanitize_text_field( jtc_post_input( 'jtc_first_name' ) );
+		$last_name  = sanitize_text_field( jtc_post_input( 'jtc_last_name' ) );
+		$email      = strtolower( sanitize_email( jtc_post_input( 'jtc_email' ) ) );
+		$errors     = array();
+		if ( '' === $first_name ) {
+			$errors[] = __( 'First name is required.', 'join-the-cause' );
 		}
-
-		// Core required fields.
-		$first_name = sanitize_text_field( wp_unslash( $_POST['jtc_first_name'] ?? '' ) );
-		$last_name  = sanitize_text_field( wp_unslash( $_POST['jtc_last_name']  ?? '' ) );
-		$email      = sanitize_email( wp_unslash( $_POST['jtc_email'] ?? '' ) );
-
-		$errors = [];
-
-		if ( empty( $first_name ) ) $errors[] = __( 'First name is required.', 'join-the-cause' );
-		if ( empty( $last_name ) )  $errors[] = __( 'Last name is required.',  'join-the-cause' );
-		if ( ! is_email( $email ) ) $errors[] = __( 'A valid email address is required.', 'join-the-cause' );
-
-		// Extra / custom form fields — required flags enforced server-side.
+		if ( '' === $last_name ) {
+			$errors[] = __( 'Last name is required.', 'join-the-cause' );
+		}
+		if ( ! is_email( $email ) || strlen( $email ) > 191 ) {
+			$errors[] = __( 'A valid email address of at most 191 characters is required.', 'join-the-cause' );
+		}
+		if ( mb_strlen( $first_name, 'UTF-8' ) > 100 || mb_strlen( $last_name, 'UTF-8' ) > 100 ) {
+			$errors[] = __( 'Names must contain at most 100 characters.', 'join-the-cause' );
+		}
 		$extra_fields = $this->validate_extra_fields( $petition_id, $errors );
-
 		if ( $errors ) {
-			wp_send_json_error( [ 'message' => implode( ' ', $errors ) ], 422 );
+			wp_send_json_error( array( 'message' => implode( ' ', $errors ) ), 422 );
 		}
-
-		// Duplicate check: same email + same petition (fast path; the unique
-		// index from schema v2 is the authority under concurrency).
 		global $wpdb;
-		$existing = $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT id FROM {$wpdb->prefix}jtc_supporters WHERE email = %s AND petition_id = %d LIMIT 1",
-				$email,
-				$petition_id
-			)
-		);
-
-		if ( $existing ) {
-			wp_send_json_error( [ 'message' => __( "You've already signed this petition. Thank you for your support!", 'join-the-cause' ) ], 409 );
-		}
-
-		// Display name consent (only relevant when show_recent is on).
-		$display_consent = ! empty( $_POST['jtc_display_consent'] ) ? 1 : 0;
-
-		// Insert supporter.
-		$wpdb->suppress_errors( true );
-		$inserted     = $wpdb->insert(
-			$wpdb->prefix . 'jtc_supporters',
-			[
-				'petition_id'     => $petition_id,
-				'first_name'      => $first_name,
-				'last_name'       => $last_name,
-				'email'           => $email,
-				'display_consent' => $display_consent,
-				'extra_fields'    => wp_json_encode( $extra_fields ),
-				'ip_address'      => $ip,
-				'signed_at'       => current_time( 'mysql' ),
-			],
-			[ '%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s' ]
-		);
-		$insert_error = (string) $wpdb->last_error;
-		$wpdb->suppress_errors( false );
-
-		if ( ! $inserted ) {
-			if ( false !== stripos( $insert_error, 'duplicate' ) ) {
-				// Lost a race with a concurrent identical sign.
-				wp_send_json_error( [ 'message' => __( "You've already signed this petition. Thank you for your support!", 'join-the-cause' ) ], 409 );
-			}
-
-			// Re-check in case the insert failed for a duplicate reason we
-			// could not classify (legacy installs without the unique index).
-			$existing = $wpdb->get_var(
-				$wpdb->prepare(
-					"SELECT id FROM {$wpdb->prefix}jtc_supporters WHERE email = %s AND petition_id = %d LIMIT 1",
-					$email,
-					$petition_id
-				)
+		$existing = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$wpdb->prefix}jtc_supporters WHERE email = %s AND petition_id = %d LIMIT 1", $email, $petition_id ) );
+		if ( ! $existing ) {
+			$previous     = $wpdb->suppress_errors( true );
+			$inserted     = $wpdb->insert(
+				$wpdb->prefix . 'jtc_supporters',
+				array(
+					'petition_id'        => $petition_id,
+					'first_name'         => $first_name,
+					'last_name'          => $last_name,
+					'email'              => $email,
+					'display_consent'    => '1' === jtc_post_input( 'jtc_display_consent' ) ? 1 : 0,
+					'newsletter_consent' => '1' === jtc_post_input( 'jtc_newsletter_consent' ) ? 1 : 0,
+					'extra_fields'       => wp_json_encode( $extra_fields ),
+					'ip_address'         => '',
+					'signed_at'          => current_time( 'mysql' ),
+				),
+				array( '%d', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%s' )
 			);
-
-			if ( $existing ) {
-				wp_send_json_error( [ 'message' => __( "You've already signed this petition. Thank you for your support!", 'join-the-cause' ) ], 409 );
+			$supporter_id = (int) $wpdb->insert_id;
+			$wpdb->suppress_errors( $previous );
+			if ( ! $inserted ) {
+				$existing = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$wpdb->prefix}jtc_supporters WHERE email = %s AND petition_id = %d LIMIT 1", $email, $petition_id ) );
+				if ( ! $existing ) {
+					wp_send_json_error( array( 'message' => __( 'Could not save your signature. Please try again.', 'join-the-cause' ) ), 500 );
+				}
+			} else {
+				// Schedule only an ID; never copy personal data into the cron option.
+				wp_schedule_single_event( time() + 1, 'jtc_signature_mail', array( $supporter_id ) );
 			}
-
-			wp_send_json_error( [ 'message' => __( 'Could not save your signature. Please try again.', 'join-the-cause' ) ], 500 );
 		}
-
-		// Bump rate limiter.
-		set_transient( $rate_key, $rate_count + 1, $rate_window );
-
-		// Fire emails asynchronously (still synchronous here but isolated via method).
-		$supporter = [
-			'first_name' => $first_name,
-			'last_name'  => $last_name,
-			'email'      => $email,
-		];
-
-		$mailer = new JTC_Mailer();
-		$mailer->send_welcome( $supporter, $petition_id );
-		$mailer->send_admin_notify( $supporter, $petition_id );
-
-		// Get updated count and recent signers for JS to refresh the UI.
-		$count = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$wpdb->prefix}jtc_supporters WHERE petition_id = %d",
-				$petition_id
+		// An existing address receives the same public response. It never changes
+		// the original name, consent, or triggers another confirmation email.
+		$count    = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->prefix}jtc_supporters WHERE petition_id = %d", $petition_id ) );
+		$settings = get_post_meta( $petition_id, '_jtc_petition_settings', true );
+		$defaults = get_option( 'jtc_petition_defaults', array() );
+		$settings = array_merge( is_array( $defaults ) ? $defaults : array(), is_array( $settings ) ? $settings : array() );
+		wp_send_json_success(
+			array(
+				'action'          => $settings['after_sign_action'] ?? 'message',
+				'message'         => wp_kses_post( $settings['after_sign_message'] ?? __( 'Thank you for signing! Your name has been added to the petition.', 'join-the-cause' ) ),
+				'redirect_url'    => esc_url( $settings['after_sign_redirect'] ?? '' ),
+				'share_url'       => esc_url( jtc_get_petition_share_url( $petition_id, false ) ),
+				'count'           => $count,
+				'count_formatted' => number_format_i18n( $count ),
+				'recent_signers'  => ! empty( $settings['show_recent'] ) ? $this->get_recent_signers( $petition_id ) : array(),
 			)
 		);
+	}
 
-		$recent = $this->get_recent_signers( $petition_id );
+	/**
+	 * Atomically increment a fixed-window bucket; database failures fail closed.
+	 *
+	 * @param string $ip Client connection IP.
+	 * @param int    $petition_id Petition post ID.
+	 */
+	public function consume_attempt( string $ip, int $petition_id ) {
+		global $wpdb;
+		$now    = time();
+		$max    = max( 1, (int) apply_filters( 'jtc_rate_limit_max', 5, $petition_id ) );
+		$window = max( 1, (int) apply_filters( 'jtc_rate_limit_window', HOUR_IN_SECONDS, $petition_id ) );
+		$bucket = hash_hmac( 'sha256', $ip, wp_salt( 'nonce' ) );
+		$result = $wpdb->query(
+			$wpdb->prepare(
+				"INSERT INTO {$wpdb->prefix}jtc_rate_limits (bucket, attempts, expires_at)
+			 VALUES (%s, LAST_INSERT_ID(1), %d)
+			 ON DUPLICATE KEY UPDATE
+			 attempts = LAST_INSERT_ID(IF(expires_at <= %d, 1, LEAST(attempts + 1, 4294967295))),
+			 expires_at = IF(expires_at <= %d, %d, expires_at)",
+				$bucket,
+				$now + $window,
+				$now,
+				$now,
+				$now + $window
+			)
+		);
+		if ( false === $result ) {
+			return new WP_Error( 'rate_unavailable', __( 'The form is temporarily unavailable. Please try again later.', 'join-the-cause' ) );
+		}
+		return (int) $wpdb->insert_id <= $max;
+	}
 
-		// Determine what to do after signing.
-		$settings      = get_post_meta( $petition_id, '_jtc_petition_settings', true );
-		$defaults      = get_option( 'jtc_petition_defaults', [] );
-		$after_action  = $settings['after_sign_action']   ?? $defaults['after_sign_action']   ?? 'message';
-		$after_message = $settings['after_sign_message']  ?? $defaults['after_sign_message']  ?? __( 'Thank you for signing!', 'join-the-cause' );
-		$after_url     = $settings['after_sign_redirect'] ?? $defaults['after_sign_redirect'] ?? '';
+	/**
+	 * Remove expired, keyed IP hashes; active buckets contain no plaintext IPs.
+	 */
+	public function cleanup_rates(): void {
+		global $wpdb;
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}jtc_rate_limits WHERE expires_at < %d", time() ) );
+	}
 
-		wp_send_json_success( [
-			'action'         => $after_action,
-			'message'        => wp_kses_post( $after_message ),
-			'redirect_url'   => esc_url( $after_url ),
-			'share_url'      => esc_url( jtc_get_petition_share_url( $petition_id ) ),
-			'count'          => $count,
-			'recent_signers' => $recent,
-		] );
+	/**
+	 * Deliver transactional mail after the signature response has returned.
+	 *
+	 * @param int $supporter_id Supporter row ID.
+	 */
+	public function send_signature_mail( int $supporter_id ): void {
+		global $wpdb;
+		$supporter = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}jtc_supporters WHERE id = %d", $supporter_id ), ARRAY_A );
+		if ( ! $supporter ) {
+			return;
+		}
+		$mailer = new JTC_Mailer();
+		$mailer->send_welcome( $supporter, (int) $supporter['petition_id'] );
+		$mailer->send_admin_notify( $supporter, (int) $supporter['petition_id'] );
 	}
 
 	// ─── Helper: bot checks ──────────────────────────────────────────────────
@@ -179,16 +187,18 @@ class JTC_Form_Handler {
 	 * Both checks fail open when their inputs are missing, so cached pages
 	 * and slow connections never block real signers; the honeypot is the
 	 * primary signal and the time check only rejects sub-2-second fills.
+	 *
+	 * @return bool Result value.
 	 */
 	private function passes_bot_checks(): bool {
 		// Honeypot: off-screen field humans never see or fill.
-		$honeypot = isset( $_POST['jtc_website'] ) ? sanitize_text_field( wp_unslash( $_POST['jtc_website'] ) ) : '';
+		$honeypot = jtc_post_input( 'jtc_website' );
 		if ( '' !== $honeypot ) {
 			return false;
 		}
 
 		// Minimum fill time (2s). Missing timestamps pass through.
-		$form_time = isset( $_POST['jtc_form_time'] ) ? absint( $_POST['jtc_form_time'] ) : 0;
+		$form_time = absint( jtc_post_input( 'jtc_form_time' ) );
 		if ( $form_time ) {
 			$elapsed = time() - $form_time;
 			if ( $elapsed >= 0 && $elapsed < 2 ) {
@@ -205,25 +215,28 @@ class JTC_Form_Handler {
 	// ─── Helper: extra custom fields ─────────────────────────────────────────
 
 	/**
-	 * Validates and collects values for extra petition-specific form fields,
+	 * Validates and collects values for extra petition-specific form fields,.
 	 * enforcing `required` server-side. Field-specific errors are appended to
 	 * $errors (by reference). Returns an assoc array keyed by field ID.
 	 *
-	 * @param int   $petition_id
+	 * @param int   $petition_id Petition post ID.
 	 * @param array $errors      Validation errors (by reference).
 	 * @return array<string, array{label:string,value:mixed}>
 	 */
 	private function validate_extra_fields( int $petition_id, array &$errors ): array {
 		$raw    = get_post_meta( $petition_id, '_jtc_form_fields', true );
-		$fields = $raw ? json_decode( $raw, true ) : [];
+		$fields = is_string( $raw ) ? json_decode( $raw, true ) : array();
 
 		if ( ! is_array( $fields ) ) {
-			return [];
+			return array();
 		}
 
-		$data = [];
+		$data = array();
 
 		foreach ( $fields as $field ) {
+			if ( ! is_array( $field ) ) {
+				continue;
+			}
 			$field_id = isset( $field['id'] ) ? sanitize_key( $field['id'] ) : '';
 			if ( '' === $field_id ) {
 				continue;
@@ -233,7 +246,7 @@ class JTC_Form_Handler {
 			$required = ! empty( $field['required'] );
 			$label    = sanitize_text_field( (string) ( $field['label'] ?? $field_id ) );
 			$post_key = 'jtc_extra_' . $field_id;
-			$raw_val  = isset( $_POST[ $post_key ] ) ? wp_unslash( $_POST[ $post_key ] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+			$raw_val  = jtc_post_input( $post_key, 'textarea' );
 
 			// Non-scalar input (e.g. `jtc_extra_x[]=…`) is invalid for every
 			// branch below; cast it to empty rather than letting `(string)`
@@ -244,53 +257,62 @@ class JTC_Form_Handler {
 				$value = ! empty( $raw_val ) ? 1 : 0;
 
 				if ( $required && ! $value ) {
-					/* translators: %s form field label */
+					/* translators: %s: Form field label. */
 					$errors[] = sprintf( __( '%s is required.', 'join-the-cause' ), $label );
 				}
 			} elseif ( 'select' === $type ) {
 				$value   = sanitize_text_field( (string) $raw_val );
-				$options = array_map( 'sanitize_text_field', (array) ( $field['options'] ?? [] ) );
+				$options = array_map( 'sanitize_text_field', (array) ( $field['options'] ?? array() ) );
 
 				if ( '' !== $value && ! in_array( $value, $options, true ) ) {
 					$value = ''; // Reject values that are not offered by the field.
 				}
 				if ( $required && '' === $value ) {
+					/* translators: %s: Form field label. */
 					$errors[] = sprintf( __( '%s is required.', 'join-the-cause' ), $label );
 				}
 			} elseif ( 'textarea' === $type ) {
 				$value = sanitize_textarea_field( (string) $raw_val );
 
 				if ( $required && '' === trim( $value ) ) {
+					/* translators: %s: Form field label. */
 					$errors[] = sprintf( __( '%s is required.', 'join-the-cause' ), $label );
 				}
 			} elseif ( 'email' === $type ) {
 				$value = sanitize_text_field( (string) $raw_val );
 
 				if ( '' !== $value && ! is_email( $value ) ) {
-					/* translators: %s form field label */
+					/* translators: %s: Form field label. */
 					$errors[] = sprintf( __( '%s must be a valid email address.', 'join-the-cause' ), $label );
 				} elseif ( $required && '' === $value ) {
+					/* translators: %s: Form field label. */
 					$errors[] = sprintf( __( '%s is required.', 'join-the-cause' ), $label );
 				}
 			} else {
 				$value = sanitize_text_field( (string) $raw_val );
 
 				if ( $required && '' === $value ) {
+					/* translators: %s: Form field label. */
 					$errors[] = sprintf( __( '%s is required.', 'join-the-cause' ), $label );
 				}
 			}
 
-			$data[ $field_id ] = [
+			$data[ $field_id ] = array(
 				'label' => $label,
 				'value' => $value,
-			];
+			);
 		}
 
 		return $data;
 	}
 
 	// ─── Helper: recent public signers ────────────────────────────────────────
-
+	/**
+	 * Get recent signers.
+	 *
+	 * @param int $petition_id Petition post ID.
+	 * @return array Result value.
+	 */
 	private function get_recent_signers( int $petition_id ): array {
 		global $wpdb;
 
@@ -305,17 +327,20 @@ class JTC_Form_Handler {
 			ARRAY_A
 		);
 
-		return array_map( function( array $r ): array {
-			return [
-				// JSON-only payload (the client escapes once on render), so no
-				// HTML escaping here — escaping twice showed literal entities.
-				'name'            => $r['first_name'] . ' ' . substr( $r['last_name'], 0, 1 ) . '.',
-				// Raw signup datetime for the client's <time datetime="…">…
-				'signed_at'       => $r['signed_at'],
-				// …plus the humanised label matching the initial server render.
-				'signed_at_human' => human_time_diff( strtotime( $r['signed_at'] ), time() ) . ' ' . __( 'ago', 'join-the-cause' ),
-			];
-		}, $rows ?: [] );
+		return array_map(
+			function ( array $r ): array {
+				return array(
+					// JSON-only payload (the client escapes once on render), so no
+					// HTML escaping here — escaping twice showed literal entities.
+					'name'            => $r['first_name'] . ' ' . jtc_name_initial( $r['last_name'] ) . '.',
+					// Raw signup datetime for the client's time element.
+					'signed_at'       => $r['signed_at'],
+					// …plus the humanised label matching the initial server render.
+					'signed_at_human' => human_time_diff( (int) get_gmt_from_date( $r['signed_at'], 'U' ), time() ) . ' ' . __( 'ago', 'join-the-cause' ),
+				);
+			},
+			jtc_fallback( $rows, array() )
+		);
 	}
 
 	// ─── Helper: real IP ─────────────────────────────────────────────────────
@@ -327,16 +352,18 @@ class JTC_Form_Handler {
 	 * X-Forwarded-For, X-Real-IP) are only honored when the site explicitly
 	 * opts in by defining JTC_TRUST_PROXY_HEADERS as true — otherwise any
 	 * visitor could spoof the header and get a fresh rate-limit bucket.
+	 *
+	 * @return string Result value.
 	 */
 	private function get_ip(): string {
 		$ip = '';
 
 		if ( defined( 'JTC_TRUST_PROXY_HEADERS' ) && JTC_TRUST_PROXY_HEADERS ) {
-			$forwarded_keys = [
+			$forwarded_keys = array(
 				'HTTP_CF_CONNECTING_IP', // Cloudflare.
 				'HTTP_X_FORWARDED_FOR',
 				'HTTP_X_REAL_IP',
-			];
+			);
 
 			foreach ( $forwarded_keys as $key ) {
 				if ( empty( $_SERVER[ $key ] ) ) {

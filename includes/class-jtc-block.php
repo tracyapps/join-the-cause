@@ -20,20 +20,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/** Block WordPress component. */
 class JTC_Block {
 
-	const BLOCK_NAME      = 'jtc/petition';
-	const BLOCK_CATEGORY  = 'join-the-cause';
+	const BLOCK_NAME     = 'jtc/petition';
+	const BLOCK_CATEGORY = 'join-the-cause';
 
 	/**
-	 * Wire the block into WordPress. Blocks must be registered on `init`,
+	 * Wire the block into WordPress. Blocks must be registered on `init`,.
 	 * so the actual registration is deferred to that hook; the category
 	 * filter and editor-canvas styles are registered immediately.
 	 */
 	public function register(): void {
-		add_action( 'init', [ $this, 'register_block_type' ] );
-		add_filter( 'block_categories_all', [ $this, 'register_category' ], 10, 2 );
-		add_action( 'enqueue_block_assets', [ $this, 'enqueue_editor_canvas_assets' ] );
+		add_action( 'init', array( $this, 'register_block_type' ) );
+		add_filter( 'block_categories_all', array( $this, 'register_category' ), 10, 2 );
+		add_action( 'enqueue_block_assets', array( $this, 'enqueue_editor_canvas_assets' ) );
 	}
 
 	// ─── Registration ─────────────────────────────────────────────────────────
@@ -53,7 +54,7 @@ class JTC_Block {
 
 		$block_type = register_block_type_from_metadata(
 			JTC_PLUGIN_DIR . 'blocks/petition',
-			[ 'render_callback' => [ $this, 'render' ] ]
+			array( 'render_callback' => array( $this, 'render' ) )
 		);
 
 		// Pass admin URLs to the editor script (empty-state "create" link).
@@ -63,9 +64,9 @@ class JTC_Block {
 			wp_localize_script(
 				$block_type->editor_script_handles[0],
 				'jtcBlockEditor',
-				[
+				array(
 					'newPetitionUrl' => admin_url( 'post-new.php?post_type=' . JTC_CPT ),
-				]
+				)
 			);
 		}
 	}
@@ -85,13 +86,13 @@ class JTC_Block {
 		}
 
 		return array_merge(
-			[
-				[
+			array(
+				array(
 					'slug'  => self::BLOCK_CATEGORY,
 					'title' => __( 'Join the Cause', 'join-the-cause' ),
 					'icon'  => null,
-				],
-			],
+				),
+			),
 			(array) $categories
 		);
 	}
@@ -99,7 +100,7 @@ class JTC_Block {
 	// ─── Rendering ────────────────────────────────────────────────────────────
 
 	/**
-	 * Server render for jtc/petition — delegates to the shortcode renderer so
+	 * Server render for jtc/petition — delegates to the shortcode renderer so.
 	 * the block and [jtc_petition] produce identical inner output (same
 	 * markup, data attributes, escaping, and asset enqueues).
 	 *
@@ -115,10 +116,10 @@ class JTC_Block {
 	 */
 	public function render( $attributes, $content = '', $block = null ): string {
 		$inner = ( new JTC_Shortcode() )->render(
-			[
+			array(
 				'id'         => isset( $attributes['petitionId'] ) ? absint( $attributes['petitionId'] ) : 0,
 				'show_title' => ! empty( $attributes['showTitle'] ) ? 1 : 0,
-			]
+			)
 		);
 
 		return '<div ' . get_block_wrapper_attributes() . '>' . $inner . '</div>';
@@ -127,7 +128,7 @@ class JTC_Block {
 	// ─── Editor canvas styles ─────────────────────────────────────────────────
 
 	/**
-	 * Make the public stylesheet + CSS variables available inside the block
+	 * Make the public stylesheet + CSS variables available inside the block.
 	 * editor canvas (iframe) so the ServerSideRender preview matches the
 	 * front end.
 	 *
@@ -152,7 +153,7 @@ class JTC_Block {
 		}
 
 		if ( ! wp_style_is( 'jtc-public', 'registered' ) ) {
-			wp_register_style( 'jtc-public', JTC_PLUGIN_URL . 'assets/css/public.css', [], JTC_VERSION );
+			wp_register_style( 'jtc-public', JTC_PLUGIN_URL . 'assets/css/public.css', array(), JTC_VERSION );
 		}
 
 		wp_enqueue_style( 'jtc-public' );

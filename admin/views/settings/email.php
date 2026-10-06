@@ -8,7 +8,9 @@
  * @package JoinTheCause
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 ?>
 <div class="jtc-tab-content">
 	<h2><?php esc_html_e( 'Email Settings', 'join-the-cause' ); ?></h2>
@@ -22,13 +24,13 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 			<td>
 				<?php
 				$method  = get_option( 'jtc_email_method', 'wp_mail' );
-				$methods = [
+				$methods = array(
 					'wp_mail' => __( 'wp_mail (WordPress default)', 'join-the-cause' ),
-					'smtp'    => __( 'SMTP (override PHPMailer)',    'join-the-cause' ),
-					'api'     => __( 'API (Mailgun or SendGrid)',    'join-the-cause' ),
-				];
+					'smtp'    => __( 'SMTP (override PHPMailer)', 'join-the-cause' ),
+					'api'     => __( 'API (Mailgun or SendGrid)', 'join-the-cause' ),
+				);
 				foreach ( $methods as $val => $lbl ) :
-				?>
+					?>
 				<label style="display:block;margin-bottom:6px;">
 					<input type="radio" name="jtc_email_method" value="<?php echo esc_attr( $val ); ?>"
 						<?php checked( $method, $val ); ?> class="jtc-email-method-radio">
@@ -83,7 +85,13 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 			<th scope="row"><label for="jtc_smtp_encryption"><?php esc_html_e( 'Encryption', 'join-the-cause' ); ?></label></th>
 			<td>
 				<select id="jtc_smtp_encryption" name="jtc_smtp_encryption">
-					<?php foreach ( [ 'tls' => 'TLS', 'ssl' => 'SSL', 'none' => __( 'None', 'join-the-cause' ) ] as $v => $l ) : ?>
+					<?php
+					foreach ( array(
+						'tls'  => 'TLS',
+						'ssl'  => 'SSL',
+						'none' => __( 'None', 'join-the-cause' ),
+					) as $v => $l ) :
+						?>
 					<option value="<?php echo esc_attr( $v ); ?>" <?php selected( get_option( 'jtc_smtp_encryption', 'tls' ), $v ); ?>><?php echo esc_html( $l ); ?></option>
 					<?php endforeach; ?>
 				</select>
@@ -101,7 +109,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 					value="" autocomplete="new-password" class="regular-text">
 				<p class="description">
 					<?php
-					echo '' !== (string) get_option( 'jtc_smtp_password', '' )
+					echo '' !== (string) jtc_get_secret( 'jtc_smtp_password' )
 						? esc_html__( 'A password is saved — leave blank to keep it.', 'join-the-cause' )
 						: esc_html__( 'No password saved yet.', 'join-the-cause' );
 					?>
@@ -148,7 +156,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 					value="" autocomplete="new-password" class="regular-text">
 				<p class="description">
 					<?php
-					echo '' !== (string) get_option( 'jtc_api_key', '' )
+					echo '' !== (string) jtc_get_secret( 'jtc_api_key' )
 						? esc_html__( 'A key is saved. Leave blank to keep it.', 'join-the-cause' )
 						: esc_html__( 'No key saved yet.', 'join-the-cause' );
 					?>
@@ -180,9 +188,11 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 		<tr>
 			<th scope="row"><label for="jtc_welcome_body"><?php esc_html_e( 'Body', 'join-the-cause' ); ?></label></th>
 			<td>
-				<textarea id="jtc_welcome_body" name="jtc_welcome_email_body" class="large-text" rows="6"><?php
+				<textarea id="jtc_welcome_body" name="jtc_welcome_email_body" class="large-text" rows="6">
+				<?php
 					echo esc_textarea( get_option( 'jtc_welcome_email_body', '' ) );
-				?></textarea>
+				?>
+				</textarea>
 				<p class="description">
 					<?php esc_html_e( 'Available tokens: {first_name}, {last_name}, {email}, {petition_title}, {petition_url}, {petition_short_url}, {site_name}, {site_url}', 'join-the-cause' ); ?>
 				</p>

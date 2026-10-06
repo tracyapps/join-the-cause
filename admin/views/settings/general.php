@@ -8,7 +8,9 @@
  * @package JoinTheCause
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 ?>
 <div class="jtc-tab-content">
 	<h2><?php esc_html_e( 'Global Petition Text', 'join-the-cause' ); ?></h2>

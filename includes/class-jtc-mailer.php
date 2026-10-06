@@ -14,19 +14,46 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/** Mailer WordPress component. */
 class JTC_Mailer {
 
+	/**
+	 * Method.
+	 *
+	 * @var string
+	 */
 	private string $method;
+	/**
+	 * From name.
+	 *
+	 * @var string
+	 */
 	private string $from_name;
+	/**
+	 * From email.
+	 *
+	 * @var string
+	 */
 	private string $from_email;
+	/**
+	 * Last error.
+	 *
+	 * @var string
+	 */
 	private string $last_error = '';
-
+	/**
+	 * Read the configured email delivery settings.
+	 */
 	public function __construct() {
 		$this->method     = get_option( 'jtc_email_method', 'wp_mail' );
-		$this->from_name  = get_option( 'jtc_from_name',   get_bloginfo( 'name' ) );
-		$this->from_email = get_option( 'jtc_from_email',  get_option( 'admin_email' ) );
+		$this->from_name  = get_option( 'jtc_from_name', get_bloginfo( 'name' ) );
+		$this->from_email = get_option( 'jtc_from_email', get_option( 'admin_email' ) );
 	}
-
+	/**
+	 * Return the last email delivery failure.
+	 *
+	 * @return string Result value.
+	 */
 	public function get_last_error(): string {
 		return $this->last_error;
 	}
@@ -37,7 +64,8 @@ class JTC_Mailer {
 	 * Send the welcome/confirmation email to a new signer.
 	 *
 	 * @param array $supporter  Row data (first_name, last_name, email, petition_id).
-	 * @param int   $petition_id
+	 * @param int   $petition_id Petition post ID.
+	 * @return bool Result value.
 	 */
 	public function send_welcome( array $supporter, int $petition_id ): bool {
 		if ( ! get_option( 'jtc_welcome_email_enabled' ) ) {
@@ -61,11 +89,18 @@ class JTC_Mailer {
 			$petition
 		);
 
+		if ( ! empty( $supporter['newsletter_consent'] ) && ! empty( $supporter['id'] ) ) {
+			$body .= "\n\n" . __( 'Unsubscribe from newsletters:', 'join-the-cause' ) . ' ' . JTC_Privacy::unsubscribe_url( (int) $supporter['id'] );
+		}
 		return $this->send( $supporter['email'], $subject, $body );
 	}
 
 	/**
 	 * Notify the admin when a new signature is received.
+	 *
+	 * @param array $supporter Supporter row data.
+	 * @param int   $petition_id Petition post ID.
+	 * @return bool Result value.
 	 */
 	public function send_admin_notify( array $supporter, int $petition_id ): bool {
 		if ( ! get_option( 'jtc_admin_notify_enabled' ) ) {
@@ -98,84 +133,6 @@ class JTC_Mailer {
 		return $this->send( $admin_email, $subject, $body );
 	}
 
-	/**
-	 * Send a newsletter blast to all signers of a petition (or all signers if
-	 * petition_id === 0).
-	 *
-	 * @param int    $newsletter_id  Row ID in jtc_newsletters table.
-	 * @param int    $petition_id    0 = all signers.
-	 * @param string $subject
-	 * @param string $html_content
-	 */
-	public function send_newsletter( int $newsletter_id, int $petition_id, string $subject, string $html_content ): int {
-		global $wpdb;
-
-		$table = $wpdb->prefix . 'jtc_newsletters';
-
-		$query = ( 0 === $petition_id )
-			? "SELECT DISTINCT email, first_name FROM {$wpdb->prefix}jtc_supporters"
-			: $wpdb->prepare(
-				"SELECT DISTINCT email, first_name FROM {$wpdb->prefix}jtc_supporters WHERE petition_id = %d",
-				$petition_id
-			);
-
-		$recipients = $wpdb->get_results( $query ); // phpcs:ignore
-
-		// Persist progress incrementally so an interrupted send (timeout) does
-		// not lose all state: the row shows "sending" with a partial count that
-		// can be inspected afterwards.
-		$wpdb->update(
-			$table,
-			[ 'status' => 'sending', 'recipients_count' => 0 ],
-			[ 'id' => $newsletter_id ],
-			[ '%s', '%d' ],
-			[ '%d' ]
-		);
-
-		$count       = 0;
-		$batch_size  = max( 1, (int) apply_filters( 'jtc_newsletter_batch_size', 25 ) );
-		$batch_since = 0;
-
-		foreach ( $recipients as $r ) {
-			$personalised = str_replace( '{first_name}', esc_html( $r->first_name ), $html_content );
-			if ( $this->send( $r->email, $subject, $personalised, true ) ) {
-				$count++;
-			}
-
-			$batch_since++;
-			if ( $batch_since >= $batch_size ) {
-				$batch_since = 0;
-
-				// Best-effort time extension per batch (hosts may disallow this).
-				if ( function_exists( 'set_time_limit' ) ) {
-					@set_time_limit( 60 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-				}
-
-				$wpdb->update(
-					$table,
-					[ 'recipients_count' => $count ],
-					[ 'id' => $newsletter_id ],
-					[ '%d' ],
-					[ '%d' ]
-				);
-			}
-		}
-
-		// Final state.
-		$wpdb->update(
-			$table,
-			[
-				'status'           => 'sent',
-				'sent_at'          => current_time( 'mysql' ),
-				'recipients_count' => $count,
-			],
-			[ 'id' => $newsletter_id ],
-			[ '%s', '%s', '%d' ],
-			[ '%d' ]
-		);
-
-		return $count;
-	}
 
 	// ─── Core send dispatcher ─────────────────────────────────────────────────
 
@@ -183,9 +140,10 @@ class JTC_Mailer {
 	 * Dispatch a single email through whichever method is configured.
 	 *
 	 * @param string $to          Recipient email.
-	 * @param string $subject
+	 * @param string $subject Email subject.
 	 * @param string $body        Plain text or HTML.
 	 * @param bool   $is_html     True to send as HTML.
+	 * @return bool Result value.
 	 */
 	public function send( string $to, string $subject, string $body, bool $is_html = false ): bool {
 		$this->last_error = '';
@@ -224,11 +182,19 @@ class JTC_Mailer {
 	}
 
 	// ─── wp_mail (default + SMTP override) ───────────────────────────────────
-
+	/**
+	 * Send via wp mail.
+	 *
+	 * @param string $to Recipient email.
+	 * @param string $subject Email subject.
+	 * @param string $body Message body or request payload.
+	 * @param bool   $is_html Whether the body is HTML.
+	 * @return bool Result value.
+	 */
 	private function send_via_wp_mail( string $to, string $subject, string $body, bool $is_html ): bool {
-		$headers = [
-			"From: {$this->from_name} <{$this->from_email}>",
-		];
+		$headers = array(
+			'From: ' . $this->format_from_header(),
+		);
 
 		if ( $is_html ) {
 			$headers[] = 'Content-Type: text/html; charset=UTF-8';
@@ -236,7 +202,7 @@ class JTC_Mailer {
 
 		// If SMTP override is configured, hook into phpmailer_init.
 		if ( 'smtp' === $this->method ) {
-			add_action( 'phpmailer_init', [ $this, 'configure_smtp' ] );
+			add_action( 'phpmailer_init', array( $this, 'configure_smtp' ) );
 		}
 
 		$capture_error = function ( WP_Error $error ): void {
@@ -249,7 +215,7 @@ class JTC_Mailer {
 		remove_action( 'wp_mail_failed', $capture_error );
 
 		if ( 'smtp' === $this->method ) {
-			remove_action( 'phpmailer_init', [ $this, 'configure_smtp' ] );
+			remove_action( 'phpmailer_init', array( $this, 'configure_smtp' ) );
 		}
 
 		if ( ! $result && '' === $this->last_error ) {
@@ -262,24 +228,36 @@ class JTC_Mailer {
 	/**
 	 * Configures PHPMailer for SMTP when hooked into phpmailer_init.
 	 *
-	 * @param PHPMailer\PHPMailer\PHPMailer $mailer
+	 * @param \PHPMailer\PHPMailer\PHPMailer $mailer PHPMailer instance.
 	 */
-	public function configure_smtp( object $mailer ): void {
+	public function configure_smtp( \PHPMailer\PHPMailer\PHPMailer $mailer ): void {
+		// phpcs:disable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- PHPMailer defines these external property names.
 		$mailer->isSMTP();
-		$mailer->Host       = get_option( 'jtc_smtp_host', '' );
-		$mailer->Port       = (int) get_option( 'jtc_smtp_port', 587 );
-		$mailer->Username   = get_option( 'jtc_smtp_username', '' );
-		$mailer->Password   = get_option( 'jtc_smtp_password', '' );
-		$encryption         = get_option( 'jtc_smtp_encryption', 'tls' );
-		$mailer->SMTPSecure = 'none' === $encryption ? '' : $encryption;
-		$mailer->SMTPAuth   = (bool) $mailer->Username;
+		$mailer->Host                         = get_option( 'jtc_smtp_host', '' );
+		$mailer->Port                         = (int) get_option( 'jtc_smtp_port', 587 );
+		$mailer->Username                     = get_option( 'jtc_smtp_username', '' );
+		$mailer->Password                     = jtc_get_secret( 'jtc_smtp_password' );
+		$encryption                           = get_option( 'jtc_smtp_encryption', 'tls' );
+		$mailer->SMTPSecure                   = 'none' === $encryption ? '' : $encryption;
+		$mailer->Timeout                      = 15;
+		$mailer->getSMTPInstance()->Timelimit = 15;
+		$mailer->SMTPAuth                     = (bool) $mailer->Username;
+		// phpcs:enable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 	}
 
 	// ─── API (Mailgun + SendGrid) ────────────────────────────────────────────
-
+	/**
+	 * Send via api.
+	 *
+	 * @param string $to Recipient email.
+	 * @param string $subject Email subject.
+	 * @param string $body Message body or request payload.
+	 * @param bool   $is_html Whether the body is HTML.
+	 * @return bool Result value.
+	 */
 	private function send_via_api( string $to, string $subject, string $body, bool $is_html ): bool {
 		$provider = get_option( 'jtc_api_provider', 'mailgun' );
-		$api_key  = get_option( 'jtc_api_key', '' );
+		$api_key  = jtc_get_secret( 'jtc_api_key' );
 
 		if ( empty( $api_key ) ) {
 			$this->last_error = __( 'API key is missing.', 'join-the-cause' );
@@ -292,31 +270,52 @@ class JTC_Mailer {
 			default    => $this->unsupported_api_provider(),
 		};
 	}
-
+	/**
+	 * Unsupported api provider.
+	 *
+	 * @return bool Result value.
+	 */
 	private function unsupported_api_provider(): bool {
 		$this->last_error = __( 'Selected API provider is not supported.', 'join-the-cause' );
 		return false;
 	}
-
+	/**
+	 * Sendgrid.
+	 *
+	 * @param string $to Recipient email.
+	 * @param string $subject Email subject.
+	 * @param string $body Message body or request payload.
+	 * @param bool   $is_html Whether the body is HTML.
+	 * @param string $api_key Api key.
+	 * @return bool Result value.
+	 */
 	private function sendgrid( string $to, string $subject, string $body, bool $is_html, string $api_key ): bool {
-		$payload = [
-			'personalizations' => [ [ 'to' => [ [ 'email' => $to ] ] ] ],
-			'from'             => [ 'email' => $this->from_email, 'name' => $this->from_name ],
+		$payload = array(
+			'personalizations' => array( array( 'to' => array( array( 'email' => $to ) ) ) ),
+			'from'             => array(
+				'email' => $this->from_email,
+				'name'  => $this->from_name,
+			),
 			'subject'          => $subject,
-			'content'          => [ [
-				'type'  => $is_html ? 'text/html' : 'text/plain',
-				'value' => $body,
-			] ],
-		];
+			'content'          => array(
+				array(
+					'type'  => $is_html ? 'text/html' : 'text/plain',
+					'value' => $body,
+				),
+			),
+		);
 
-		$response = wp_remote_post( 'https://api.sendgrid.com/v3/mail/send', [
-			'headers' => [
-				'Authorization' => 'Bearer ' . $api_key,
-				'Content-Type'  => 'application/json',
-			],
-			'body'    => wp_json_encode( $payload ),
-			'timeout' => 15,
-		] );
+		$response = wp_remote_post(
+			'https://api.sendgrid.com/v3/mail/send',
+			array(
+				'headers' => array(
+					'Authorization' => 'Bearer ' . $api_key,
+					'Content-Type'  => 'application/json',
+				),
+				'body'    => wp_json_encode( $payload ),
+				'timeout' => 15,
+			)
+		);
 
 		if ( is_wp_error( $response ) ) {
 			$this->last_error = $response->get_error_message();
@@ -335,7 +334,16 @@ class JTC_Mailer {
 		);
 		return false;
 	}
-
+	/**
+	 * Mailgun.
+	 *
+	 * @param string $to Recipient email.
+	 * @param string $subject Email subject.
+	 * @param string $body Message body or request payload.
+	 * @param bool   $is_html Whether the body is HTML.
+	 * @param string $api_key Api key.
+	 * @return bool Result value.
+	 */
 	private function mailgun( string $to, string $subject, string $body, bool $is_html, string $api_key ): bool {
 		$domain = $this->normalize_mailgun_domain( get_option( 'jtc_mailgun_domain', '' ) );
 		if ( '' === $domain ) {
@@ -348,18 +356,21 @@ class JTC_Mailer {
 		$endpoint = $base_url . '/v3/' . rawurlencode( $domain ) . '/messages';
 		$body_key = $is_html ? 'html' : 'text';
 
-		$response = wp_remote_post( $endpoint, [
-			'headers' => [
-				'Authorization' => 'Basic ' . base64_encode( 'api:' . $api_key ),
-			],
-			'body'    => [
-				'from'    => $this->format_from_header(),
-				'to'      => $to,
-				'subject' => $subject,
-				$body_key => $body,
-			],
-			'timeout' => 15,
-		] );
+		$response = wp_remote_post(
+			$endpoint,
+			array(
+				'headers' => array(
+					'Authorization' => 'Basic ' . base64_encode( 'api:' . $api_key ), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- HTTP Basic authentication encoding required by Mailgun.
+				),
+				'body'    => array(
+					'from'    => $this->format_from_header(),
+					'to'      => $to,
+					'subject' => $subject,
+					$body_key => $body,
+				),
+				'timeout' => 15,
+			)
+		);
 
 		if ( is_wp_error( $response ) ) {
 			$this->last_error = $response->get_error_message();
@@ -385,7 +396,12 @@ class JTC_Mailer {
 		);
 		return false;
 	}
-
+	/**
+	 * Normalize mailgun domain.
+	 *
+	 * @param string $domain Domain.
+	 * @return string Result value.
+	 */
 	private function normalize_mailgun_domain( string $domain ): string {
 		$domain = trim( strtolower( $domain ) );
 		$domain = preg_replace( '#^https?://#', '', $domain );
@@ -393,9 +409,13 @@ class JTC_Mailer {
 
 		return sanitize_text_field( (string) $domain );
 	}
-
+	/**
+	 * Format from header.
+	 *
+	 * @return string Result value.
+	 */
 	private function format_from_header(): string {
-		$name = trim( str_replace( [ "\r", "\n" ], '', $this->from_name ) );
+		$name = trim( str_replace( array( "\r", "\n" ), '', $this->from_name ) );
 		return '' === $name ? $this->from_email : sprintf( '%s <%s>', $name, $this->from_email );
 	}
 
@@ -405,23 +425,28 @@ class JTC_Mailer {
 	 * Replaces {tokens} in email subjects and bodies.
 	 *
 	 * Available: {first_name}, {last_name}, {email}, {petition_title},
-	 *            {petition_url}, {petition_short_url}, {site_name}, {site_url}
+	 * {petition_url}, {petition_short_url}, {site_name}, {site_url}
+	 *
+	 * @param string  $text Template text.
+	 * @param array   $supporter Supporter row data.
+	 * @param WP_Post $petition Petition post object.
+	 * @return string Result value.
 	 */
 	private function replace_tokens( string $text, array $supporter, WP_Post $petition ): string {
 		$canonical_url = (string) get_permalink( $petition->ID );
-		$share_url     = jtc_get_petition_share_url( $petition->ID );
-		$short_url     = jtc_get_petition_short_url( $petition->ID ) ?: $canonical_url;
+		$share_url     = jtc_get_petition_share_url( $petition->ID, false );
+		$short_url     = jtc_fallback( jtc_get_petition_short_url( $petition->ID ), $canonical_url );
 
-		$tokens = [
-			'{first_name}'     => $supporter['first_name'] ?? '',
-			'{last_name}'      => $supporter['last_name']  ?? '',
-			'{email}'          => $supporter['email']      ?? '',
-			'{petition_title}' => $petition->post_title,
-			'{petition_url}'   => $share_url,
+		$tokens = array(
+			'{first_name}'         => $supporter['first_name'] ?? '',
+			'{last_name}'          => $supporter['last_name'] ?? '',
+			'{email}'              => $supporter['email'] ?? '',
+			'{petition_title}'     => $petition->post_title,
+			'{petition_url}'       => $share_url,
 			'{petition_short_url}' => $short_url,
-			'{site_name}'      => get_bloginfo( 'name' ),
-			'{site_url}'       => home_url(),
-		];
+			'{site_name}'          => get_bloginfo( 'name' ),
+			'{site_url}'           => home_url(),
+		);
 
 		return str_replace( array_keys( $tokens ), array_values( $tokens ), $text );
 	}

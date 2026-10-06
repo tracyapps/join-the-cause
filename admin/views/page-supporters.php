@@ -5,72 +5,95 @@
  * @package JoinTheCause
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit;
-if ( ! current_user_can( 'manage_options' ) ) wp_die( __( 'Not allowed.', 'join-the-cause' ) );
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+if ( ! current_user_can( 'manage_options' ) ) {
+	wp_die( esc_html__( 'Not allowed.', 'join-the-cause' ) );
+}
 
 global $wpdb;
 
 // ── Filters ────────────────────────────────────────────────────────────────
 $filter_petition = isset( $_GET['petition_id'] ) ? absint( $_GET['petition_id'] ) : 0;
-$search          = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
-$order_by        = in_array( $_GET['orderby'] ?? '', [ 'signed_at', 'first_name', 'email' ], true )
-                   ? sanitize_key( $_GET['orderby'] ) : 'signed_at';
-$order           = 'ASC' === ( $_GET['order'] ?? '' ) ? 'ASC' : 'DESC';
-$per_page        = 25;
+$jtc_search      = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
+$order_by        = in_array( $_GET['orderby'] ?? '', array( 'signed_at', 'first_name', 'email' ), true )
+					? sanitize_key( $_GET['orderby'] ) : 'signed_at';
+$jtc_order       = 'ASC' === sanitize_text_field( wp_unslash( $_GET['order'] ?? '' ) ) ? 'ASC' : 'DESC';
+$jtc_per_page    = 25;
 $current_page    = max( 1, absint( $_GET['paged'] ?? 1 ) );
-$offset          = ( $current_page - 1 ) * $per_page;
+$offset          = ( $current_page - 1 ) * $jtc_per_page;
 
-// ── Query ─────────────────────────────────────────────────────────────────
-$where_parts = [ '1=1' ];
-$params      = [];
-
-if ( $filter_petition ) {
-	$where_parts[] = 'petition_id = %d';
-	$params[]      = $filter_petition;
-}
-
-if ( $search ) {
-	$where_parts[] = '(first_name LIKE %s OR last_name LIKE %s OR email LIKE %s)';
-	$like          = '%' . $wpdb->esc_like( $search ) . '%';
-	$params        = array_merge( $params, [ $like, $like, $like ] );
-}
-
-$where = implode( ' AND ', $where_parts );
-$table = $wpdb->prefix . 'jtc_supporters';
-
-$total_params = $params;
-$total = (int) $wpdb->get_var(
-	$params
-		? $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE {$where}", ...$total_params )
-		: "SELECT COUNT(*) FROM {$table} WHERE {$where}"
+// The optional filter values are always prepared; only a whitelisted column
+// identifier and a literal ASC/DESC branch control ordering.
+$jtc_like = '%' . $wpdb->esc_like( $jtc_search ) . '%';
+$total    = (int) $wpdb->get_var(
+	$wpdb->prepare(
+		"SELECT COUNT(*) FROM {$wpdb->prefix}jtc_supporters WHERE (%d = 0 OR petition_id = %d) AND (%s = '' OR first_name LIKE %s OR last_name LIKE %s OR email LIKE %s)",
+		$filter_petition,
+		$filter_petition,
+		$jtc_search,
+		$jtc_like,
+		$jtc_like,
+		$jtc_like
+	)
 );
-
-$query_params = array_merge( $params, [ $per_page, $offset ] );
-$sql = "SELECT * FROM {$table} WHERE {$where} ORDER BY {$order_by} {$order} LIMIT %d OFFSET %d";
-$rows = $params
-	? $wpdb->get_results( $wpdb->prepare( $sql, ...$query_params ), ARRAY_A )
-	: $wpdb->get_results( $wpdb->prepare( $sql, $per_page, $offset ), ARRAY_A );
+if ( 'ASC' === $jtc_order ) {
+	$rows = $wpdb->get_results(
+		$wpdb->prepare(
+			"SELECT * FROM {$wpdb->prefix}jtc_supporters WHERE (%d = 0 OR petition_id = %d) AND (%s = '' OR first_name LIKE %s OR last_name LIKE %s OR email LIKE %s) ORDER BY %i ASC LIMIT %d OFFSET %d",
+			$filter_petition,
+			$filter_petition,
+			$jtc_search,
+			$jtc_like,
+			$jtc_like,
+			$jtc_like,
+			$order_by,
+			$jtc_per_page,
+			$offset
+		),
+		ARRAY_A
+	);
+} else {
+	$rows = $wpdb->get_results(
+		$wpdb->prepare(
+			"SELECT * FROM {$wpdb->prefix}jtc_supporters WHERE (%d = 0 OR petition_id = %d) AND (%s = '' OR first_name LIKE %s OR last_name LIKE %s OR email LIKE %s) ORDER BY %i DESC LIMIT %d OFFSET %d",
+			$filter_petition,
+			$filter_petition,
+			$jtc_search,
+			$jtc_like,
+			$jtc_like,
+			$jtc_like,
+			$order_by,
+			$jtc_per_page,
+			$offset
+		),
+		ARRAY_A
+	);
+}
 
 // ── All petitions for the filter dropdown ─────────────────────────────────
-$all_petitions = get_posts( [
-	'post_type'      => JTC_CPT,
-	'posts_per_page' => -1,
-	'post_status'    => [ 'publish', 'draft' ],
-	'orderby'        => 'title',
-	'order'          => 'ASC',
-] );
+$all_petitions = get_posts(
+	array(
+		'post_type'      => JTC_CPT,
+		'posts_per_page' => -1,
+		'post_status'    => array( 'publish', 'draft' ),
+		'orderby'        => 'title',
+		'order'          => 'ASC',
+	)
+);
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-$sort_url = function ( string $col ) use ( $order_by, $order, $search, $filter_petition ): string {
-	$new_order = ( $col === $order_by && 'ASC' === $order ) ? 'DESC' : 'ASC';
-	$args      = [
+$sort_url = function ( string $col ) use ( $order_by, $jtc_order, $jtc_search, $filter_petition ): string {
+	$new_order = ( $col === $order_by && 'ASC' === $jtc_order ) ? 'DESC' : 'ASC';
+	$args      = array(
 		'page'    => 'jtc-supporters',
 		'orderby' => $col,
 		'order'   => $new_order,
-	];
+	);
 
-	if ( $search ) {
-		$args['s'] = $search;
+	if ( $jtc_search ) {
+		$args['s'] = $jtc_search;
 	}
 	if ( $filter_petition ) {
 		$args['petition_id'] = $filter_petition;
@@ -79,8 +102,8 @@ $sort_url = function ( string $col ) use ( $order_by, $order, $search, $filter_p
 	return add_query_arg( $args, admin_url( 'admin.php' ) );
 };
 
-$sort_class = fn( string $col ): string => $col === $order_by ? 'sorted ' . strtolower( $order ) : 'sortable';
-$total_pages = (int) ceil( $total / $per_page );
+$sort_class  = fn( string $col ): string => $col === $order_by ? 'sorted ' . strtolower( $jtc_order ) : 'sortable';
+$total_pages = (int) ceil( $total / $jtc_per_page );
 ?>
 <div class="wrap jtc-supporters-wrap">
 	<h1><?php esc_html_e( 'Supporters', 'join-the-cause' ); ?></h1>
@@ -103,7 +126,7 @@ $total_pages = (int) ceil( $total / $per_page );
 			<!-- Search -->
 			<label for="jtc-supporter-search" class="screen-reader-text"><?php esc_html_e( 'Search supporters', 'join-the-cause' ); ?></label>
 			<input type="search" id="jtc-supporter-search" name="s"
-				value="<?php echo esc_attr( $search ); ?>"
+				value="<?php echo esc_attr( $jtc_search ); ?>"
 				placeholder="<?php esc_attr_e( 'Search name or email…', 'join-the-cause' ); ?>">
 
 			<?php submit_button( __( 'Filter', 'join-the-cause' ), 'secondary', 'filter_action', false ); ?>
@@ -111,11 +134,14 @@ $total_pages = (int) ceil( $total / $per_page );
 			<!-- Export -->
 			<?php
 			$export_url = wp_nonce_url(
-				add_query_arg( [
-					'page'                  => 'jtc-supporters',
-					'jtc_supporter_action'  => 'export',
-					'petition_id'           => $filter_petition,
-				], admin_url( 'admin.php' ) ),
+				add_query_arg(
+					array(
+						'page'                 => 'jtc-supporters',
+						'jtc_supporter_action' => 'export',
+						'petition_id'          => $filter_petition,
+					),
+					admin_url( 'admin.php' )
+				),
 				'jtc_export_supporters'
 			);
 			?>
@@ -169,9 +195,10 @@ $total_pages = (int) ceil( $total / $per_page );
 				<td colspan="6"><?php esc_html_e( 'No supporters found.', 'join-the-cause' ); ?></td>
 			</tr>
 			<?php else : ?>
-			<?php foreach ( $rows as $row ) :
-				$petition_title = get_the_title( (int) $row['petition_id'] ) ?: '—';
-			?>
+				<?php
+				foreach ( $rows as $row ) :
+					$petition_title = jtc_fallback( get_the_title( (int) $row['petition_id'] ), '—' );
+					?>
 			<tr>
 				<td><?php echo esc_html( $row['first_name'] . ' ' . $row['last_name'] ); ?></td>
 				<td><?php echo esc_html( $row['email'] ); ?></td>
@@ -198,20 +225,22 @@ $total_pages = (int) ceil( $total / $per_page );
 						<input type="hidden" name="jtc_supporter_action" value="delete">
 						<input type="hidden" name="supporter_id" value="<?php echo esc_attr( $row['id'] ); ?>">
 						<button type="submit" class="button-link jtc-delete-link"
-							aria-label="<?php
+							aria-label="
+							<?php
 								printf(
 									/* translators: %s: supporter name */
 									esc_attr__( 'Delete %s', 'join-the-cause' ),
 									esc_attr( $row['first_name'] . ' ' . $row['last_name'] )
 								);
-							?>"
+							?>
+							"
 							onclick="return confirm('<?php echo esc_js( __( 'Delete this supporter? This cannot be undone.', 'join-the-cause' ) ); ?>')">
-							<?php esc_html_e( 'Delete', 'join-the-cause' ); ?>
+								<?php esc_html_e( 'Delete', 'join-the-cause' ); ?>
 						</button>
 					</form>
 				</td>
 			</tr>
-			<?php endforeach; ?>
+				<?php endforeach; ?>
 			<?php endif; ?>
 		</tbody>
 	</table>
@@ -221,14 +250,16 @@ $total_pages = (int) ceil( $total / $per_page );
 	<div class="tablenav bottom">
 		<div class="tablenav-pages">
 			<?php
-			$page_links = paginate_links( [
-				'base'      => add_query_arg( 'paged', '%#%' ),
-				'format'    => '',
-				'prev_text' => '&laquo;',
-				'next_text' => '&raquo;',
-				'total'     => $total_pages,
-				'current'   => $current_page,
-			] );
+			$page_links = paginate_links(
+				array(
+					'base'      => add_query_arg( 'paged', '%#%' ),
+					'format'    => '',
+					'prev_text' => '&laquo;',
+					'next_text' => '&raquo;',
+					'total'     => $total_pages,
+					'current'   => $current_page,
+				)
+			);
 			echo wp_kses_post( $page_links );
 			?>
 		</div>

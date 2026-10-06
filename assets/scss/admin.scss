@@ -265,6 +265,10 @@
 
 .jtc-nl-actions {
   display: flex;
+  flex-wrap: wrap;
+
+  > * { max-width: 100%; min-width: 0; }
+  .description { overflow-wrap: anywhere; }
   gap: 12px;
   align-items: center;
   margin-top: 16px;

@@ -5,8 +5,12 @@
  * @package JoinTheCause
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit;
-if ( ! current_user_can( 'manage_options' ) ) wp_die( __( 'Not allowed.', 'join-the-cause' ) );
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+if ( ! current_user_can( 'manage_options' ) ) {
+	wp_die( esc_html__( 'Not allowed.', 'join-the-cause' ) );
+}
 
 global $wpdb;
 $table = $wpdb->prefix . 'jtc_newsletters';
@@ -16,27 +20,29 @@ $edit_id = isset( $_GET['edit'] ) ? absint( $_GET['edit'] ) : 0;
 $editing = null;
 
 if ( $edit_id ) {
-	$editing = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d AND status = 'draft'", $edit_id ), ARRAY_A );
+	$editing = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}jtc_newsletters WHERE id = %d AND status = 'draft'", $edit_id ), ARRAY_A );
 }
 
 // All petitions for dropdown.
-$all_petitions = get_posts( [
-	'post_type'      => JTC_CPT,
-	'posts_per_page' => -1,
-	'post_status'    => 'publish',
-	'orderby'        => 'title',
-	'order'          => 'ASC',
-] );
+$all_petitions = get_posts(
+	array(
+		'post_type'      => JTC_CPT,
+		'posts_per_page' => -1,
+		'post_status'    => 'publish',
+		'orderby'        => 'title',
+		'order'          => 'ASC',
+	)
+);
 
 // Recipient counts (for the "will send to" hint + JS confirm dialog).
-$recipient_counts = [
-	0 => (int) $wpdb->get_var( "SELECT COUNT(DISTINCT email) FROM {$wpdb->prefix}jtc_supporters" ), // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-];
+$recipient_counts = array(
+	0 => (int) $wpdb->get_var( "SELECT COUNT(DISTINCT email) FROM {$wpdb->prefix}jtc_supporters WHERE newsletter_consent = 1" ), // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+);
 
 foreach ( $all_petitions as $p ) {
 	$recipient_counts[ $p->ID ] = (int) $wpdb->get_var(
 		$wpdb->prepare(
-			"SELECT COUNT(DISTINCT email) FROM {$wpdb->prefix}jtc_supporters WHERE petition_id = %d",
+			"SELECT COUNT(DISTINCT email) FROM {$wpdb->prefix}jtc_supporters WHERE petition_id = %d AND newsletter_consent = 1",
 			$p->ID
 		)
 	);
@@ -49,28 +55,28 @@ $selected_count   = $recipient_counts[ $editing_petition ] ?? $recipient_counts[
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- no user input; table names are trusted $wpdb->prefix values.
 $archive = $wpdb->get_results(
 	"SELECT nl.*, p.post_title AS petition_title
-	 FROM {$table} nl
+	 FROM {$wpdb->prefix}jtc_newsletters nl
 	 LEFT JOIN {$wpdb->posts} p ON p.ID = nl.petition_id
 	 ORDER BY nl.created_at DESC LIMIT 50",
 	ARRAY_A
 );
 
-$interrupted = false;
-foreach ( $archive as $nl ) {
-	if ( 'sending' === $nl['status'] ) {
-		$interrupted = true;
-		break;
-	}
-}
+$queue         = new JTC_Newsletter();
+$status_labels = array(
+	'draft'       => __( 'Draft', 'join-the-cause' ),
+	'recovering'  => __( 'Recovering preparation', 'join-the-cause' ),
+	'preparing'   => __( 'Preparing', 'join-the-cause' ),
+	'queued'      => __( 'Queued', 'join-the-cause' ),
+	'sending'     => __( 'Sending', 'join-the-cause' ),
+	'paused'      => __( 'Paused', 'join-the-cause' ),
+	'sent'        => __( 'Sent', 'join-the-cause' ),
+	'completed'   => __( 'Completed with delivery issues', 'join-the-cause' ),
+	'interrupted' => __( 'Interrupted legacy send', 'join-the-cause' ),
+	'cancelled'   => __( 'Cancelled', 'join-the-cause' ),
+);
 ?>
 <div class="wrap jtc-newsletter-wrap">
 	<h1><?php esc_html_e( 'Newsletter', 'join-the-cause' ); ?></h1>
-
-	<?php if ( $interrupted ) : ?>
-	<div class="notice notice-warning inline">
-		<p><?php esc_html_e( 'A previous newsletter send looks interrupted. Its progress is saved in the archive below; sending again starts a fresh pass.', 'join-the-cause' ); ?></p>
-	</div>
-	<?php endif; ?>
 
 	<!-- ── Compose form ──────────────────────────────────────────────────── -->
 	<div class="jtc-nl-compose">
@@ -96,7 +102,7 @@ foreach ( $archive as $nl ) {
 							</option>
 							<?php endforeach; ?>
 						</select>
-						<p class="description"><?php esc_html_e( 'Selects the recipients. "All petitions" sends to everyone in your database.', 'join-the-cause' ); ?></p>
+						<p class="description"><?php esc_html_e( 'Selects the recipients. "All petitions" sends once per email address to people who explicitly opted in to newsletters. Existing signatures without newsletter consent are excluded.', 'join-the-cause' ); ?></p>
 					</td>
 				</tr>
 				<tr>
@@ -114,14 +120,14 @@ foreach ( $archive as $nl ) {
 						wp_editor(
 							wp_kses_post( $editing['content'] ?? '' ),
 							'jtc-nl-content',
-							[
+							array(
 								'textarea_name' => 'jtc_nl_content',
 								'textarea_rows' => 14,
 								'media_buttons' => true,
-								'tinymce'       => [
+								'tinymce'       => array(
 									'toolbar1' => 'formatselect bold italic underline | bullist numlist | link image | alignleft aligncenter alignright | undo redo',
-								],
-							]
+								),
+							)
 						);
 						?>
 						<p class="description"><?php esc_html_e( 'Use {first_name} to personalise. Emails are sent as HTML.', 'join-the-cause' ); ?></p>
@@ -155,7 +161,7 @@ foreach ( $archive as $nl ) {
 			</div>
 
 			<p class="description">
-				<?php esc_html_e( 'Sending runs synchronously and saves progress per batch, so an interruption never loses the sent count. For very large lists, prefer a dedicated mailing service.', 'join-the-cause' ); ?>
+				<?php esc_html_e( 'Newsletters run in background batches. Keep this page open for live progress, or return later. Pause or cancel stops future recipients; an email already in progress may still arrive. Interrupted deliveries are marked uncertain and are never resent automatically. WordPress cron or this page must run to advance the queue.', 'join-the-cause' ); ?>
 			</p>
 		</form>
 	</div>
@@ -170,40 +176,62 @@ foreach ( $archive as $nl ) {
 		<table class="wp-list-table widefat fixed striped" aria-label="<?php esc_attr_e( 'Newsletter archive', 'join-the-cause' ); ?>">
 			<thead>
 				<tr>
-					<th><?php esc_html_e( 'Subject',     'join-the-cause' ); ?></th>
-					<th><?php esc_html_e( 'Petition',    'join-the-cause' ); ?></th>
-					<th><?php esc_html_e( 'Status',      'join-the-cause' ); ?></th>
-					<th><?php esc_html_e( 'Recipients',  'join-the-cause' ); ?></th>
-					<th><?php esc_html_e( 'Date',        'join-the-cause' ); ?></th>
-					<th><?php esc_html_e( 'Actions',     'join-the-cause' ); ?></th>
+					<th scope="col"><?php esc_html_e( 'Subject', 'join-the-cause' ); ?></th>
+					<th scope="col"><?php esc_html_e( 'Petition', 'join-the-cause' ); ?></th>
+					<th scope="col"><?php esc_html_e( 'Status', 'join-the-cause' ); ?></th>
+					<th scope="col"><?php esc_html_e( 'Recipients', 'join-the-cause' ); ?></th>
+					<th scope="col"><?php esc_html_e( 'Date', 'join-the-cause' ); ?></th>
+					<th scope="col"><?php esc_html_e( 'Actions', 'join-the-cause' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
-			<?php foreach ( $archive as $nl ) :
-				$is_sent   = 'sent' === $nl['status'];
+			<?php
+			foreach ( $archive as $nl ) :
+				$is_sent   = in_array( $nl['status'], array( 'sent', 'completed' ), true );
+				$progress  = $queue->progress( (int) $nl['id'] );
+				$is_active = in_array( $nl['status'], array( 'queued', 'sending', 'paused' ), true );
 				$date_col  = $is_sent ? $nl['sent_at'] : $nl['created_at'];
-				$edit_link = add_query_arg( [ 'page' => 'jtc-newsletter', 'edit' => $nl['id'] ], admin_url( 'admin.php' ) );
-			?>
-			<tr>
+				$edit_link = add_query_arg(
+					array(
+						'page' => 'jtc-newsletter',
+						'edit' => $nl['id'],
+					),
+					admin_url( 'admin.php' )
+				);
+				?>
+			<tr data-newsletter-id="<?php echo esc_attr( $nl['id'] ); ?>" data-status="<?php echo esc_attr( $nl['status'] ); ?>">
 				<td><strong><?php echo esc_html( $nl['subject'] ); ?></strong></td>
-				<td><?php echo esc_html( $nl['petition_title'] ?: __( 'All petitions', 'join-the-cause' ) ); ?></td>
+				<td><?php echo esc_html( jtc_fallback( $nl['petition_title'], __( 'All petitions', 'join-the-cause' ) ) ); ?></td>
 				<td>
 					<span class="jtc-status jtc-status--<?php echo esc_attr( $nl['status'] ); ?>">
-						<?php echo esc_html( ucfirst( $nl['status'] ) ); ?>
+						<?php echo esc_html( $status_labels[ $nl['status'] ] ?? $nl['status'] ); ?>
 					</span>
 				</td>
-				<td><?php echo esc_html( number_format_i18n( (int) $nl['recipients_count'] ) ); ?></td>
+				<td>
+					<?php if ( 'interrupted' === $nl['status'] ) : ?>
+						<?php echo esc_html( number_format_i18n( (int) $nl['recipients_count'] ) ); ?>
+					<?php elseif ( 'draft' !== $nl['status'] ) : ?>
+					<progress class="jtc-nl-progress" max="<?php echo esc_attr( max( 1, $progress['total'] ) ); ?>" value="<?php echo esc_attr( $progress['processed'] ); ?>" aria-label="<?php esc_attr_e( 'Newsletter progress', 'join-the-cause' ); ?>"></progress>
+					<p class="jtc-nl-progress-label" role="status"><?php echo esc_html( $progress['label'] ); ?></p>
+						<?php
+					else :
+						?>
+						—<?php endif; ?>
+				</td>
 				<td>
 					<?php if ( $date_col ) : ?>
 					<time datetime="<?php echo esc_attr( $date_col ); ?>">
 						<?php echo esc_html( wp_date( get_option( 'date_format' ), strtotime( $date_col ) ) ); ?>
 					</time>
-					<?php else : ?>—<?php endif; ?>
+						<?php
+					else :
+						?>
+						—<?php endif; ?>
 				</td>
 				<td>
-					<?php if ( ! $is_sent ) : ?>
+					<?php if ( 'draft' === $nl['status'] ) : ?>
 					<a href="<?php echo esc_url( $edit_link ); ?>"><?php esc_html_e( 'Edit', 'join-the-cause' ); ?></a>
-					 |
+					|
 					<form method="post" action="" style="display:inline;">
 						<?php wp_nonce_field( 'jtc_newsletter_action', 'jtc_newsletter_nonce' ); ?>
 						<input type="hidden" name="jtc_nl_id" value="<?php echo esc_attr( $nl['id'] ); ?>">
@@ -213,8 +241,12 @@ foreach ( $archive as $nl ) {
 							<?php esc_html_e( 'Delete', 'join-the-cause' ); ?>
 						</button>
 					</form>
+					<?php elseif ( $is_active ) : ?>
+					<button type="button" class="button jtc-nl-control" data-control="pause" <?php disabled( 'paused' === $nl['status'] ); ?>><?php esc_html_e( 'Pause', 'join-the-cause' ); ?></button>
+					<button type="button" class="button jtc-nl-control" data-control="resume" <?php disabled( 'paused' !== $nl['status'] ); ?>><?php esc_html_e( 'Resume', 'join-the-cause' ); ?></button>
+					<button type="button" class="button jtc-nl-control" data-control="cancel"><?php esc_html_e( 'Cancel remaining', 'join-the-cause' ); ?></button>
 					<?php else : ?>
-					<span class="description"><?php esc_html_e( 'Sent', 'join-the-cause' ); ?></span>
+					<span class="description"><?php echo esc_html( $status_labels[ $nl['status'] ] ?? $nl['status'] ); ?></span>
 					<?php endif; ?>
 				</td>
 			</tr>

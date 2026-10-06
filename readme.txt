@@ -1,9 +1,9 @@
 === Join the Cause ===
 Contributors: tracyapps
 Tags: petitions, signatures, advocacy, campaigns, newsletter
-Requires at least: 6.0
+Requires at least: 6.3
 Tested up to: 7.1
-Stable tag: 0.1.0
+Stable tag: 0.2.0
 Requires PHP: 8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -15,11 +15,11 @@ Petition and newsletter management for WordPress — create, manage, and share p
 Join the Cause turns any WordPress site into a petition platform:
 
 * **Petitions** as a custom post type with a change.org-style public layout (hero, dek, signature panel, progress bar, recent supporters).
-* **Gutenberg block** — insert a petition in the block editor with a searchable picker, live preview, and an optional title toggle; renders exactly the same markup as the shortcode.
-* **Signature form** with AJAX submission, per-field validation on both client and server, AJAX-based duplicate detection (one email per petition), honeypot and minimum-fill-time bot protection, and filterable rate limiting.
+* **Gutenberg block** — insert a petition in the block editor with a searchable picker, live preview, and an optional title toggle; shares its petition renderer with the shortcode.
+* **Signature form** with AJAX submission, per-field validation on both client and server, private duplicate handling (one email per petition), honeypot and minimum-fill-time bot protection, and filterable rate limiting.
 * **Custom form fields** per petition — text, email, textarea, checkbox, and select (with option lists) — all enforced server-side.
-* **Share tools** — Facebook / X / copy-link / embed, printable QR codes, and optional interface Short.io short links and QR generation.
-* **Newsletter** tool with recipient counts, per-batch progress, drafts, and test sends.
+* **Share tools** — Facebook / X / copy-link / embed, printable QR codes, and optional Short.io short links and QR generation.
+* **Newsletter** tool with separate opt-in, background batches, progress, pause/resume/cancel, unsubscribe, drafts, and test sends.
 * **Email delivery** via wp_mail, SMTP, or the Mailgun/SendGrid APIs, with welcome emails and admin notifications.
 * **Appearance system** — five presets (each with a dark variant), custom colours, corner radius, shadow, button style, typography scale, hero styles, and section toggles, all driven by CSS custom properties.
 * **Accessibility-minded** — labelled fields, described-by error messages, keyboard-friendly admin tools, reduced-motion support.
@@ -45,7 +45,7 @@ Yes. Each petition (shortcode or block) is fully independent — its own signatu
 
 = Should I use the block or the shortcode? =
 
-Either — they render identical output, because the block delegates to the same renderer as the shortcode. Use the block inside the block editor for the picker and live preview; use the shortcode for widgets, page builders, and PHP templates.
+Either — they share the same petition layout, with unique IDs for each rendered instance. Use the block inside the block editor for the picker and live preview; use the shortcode for widgets, page builders, and PHP templates.
 
 = The form needs JavaScript. What happens without it? =
 
@@ -53,7 +53,7 @@ Anonymous signatures are submitted over AJAX; without JavaScript a notice is sho
 
 = Signers behind Cloudflare get the wrong rate limit. =
 
-Only the direct connection address is trusted by default. If your site sits behind Cloudflare or another reverse proxy, define `JTC_TRUST_PROXY_HEADERS` as `true` in `wp-config.php` so the real visitor address is used.
+Only the direct connection address is trusted by default. Enable `JTC_TRUST_PROXY_HEADERS` only when a trusted upstream proxy overwrites client-IP headers and visitors cannot bypass it. Otherwise forwarded headers can be spoofed.
 
 = Signing fails after a while on cached pages. =
 
@@ -61,9 +61,42 @@ Security tokens expire after 12–24 hours. Exclude petition pages from full-pag
 
 = Where is my data stored? =
 
-Signatures and newsletters live in two custom tables; settings are normal WordPress options. Deleting the plugin removes all of its data (including generated QR cards).
+Four custom tables store signatures, newsletters, delivery outcomes, and temporary keyed rate-limit buckets. Settings use WordPress options. New signatures do not retain raw IP addresses; old records may retain their legacy address until erased. WordPress privacy tools can export or erase signature data. Deleting the plugin removes its data and generated QR cards.
+
+= Do existing signers receive newsletters after upgrading? =
+
+No. Newsletter consent is separate from public-name consent and starts disabled for existing signatures. New signers can choose the unchecked newsletter option. Unsubscribing withdraws newsletter consent across petitions while keeping signatures.
+
+= How do background sends run? =
+
+WordPress cron sends bounded batches; keeping the Newsletter screen open also advances jobs through authenticated progress polling. Configure cron for low-traffic sites or when WP cron is disabled. Pause/resume/cancel affects future sends; a provider may already have accepted an in-flight message. Interrupted deliveries are marked unknown and are not retried automatically. Check provider logs before creating another send. “Sent” indicates transport acceptance, not inbox delivery.
+
+= How are credentials stored? =
+
+Saved credentials are database options with autoload disabled, not encrypted at rest. Optional `JTC_SMTP_PASSWORD`, `JTC_API_KEY`, and `JTC_SHORTIO_API_KEY` constants in wp-config.php override the saved values. Protect configuration and backups.
+
+== External Services ==
+
+Integrations are optional and contacted only when enabled/configured. WordPress mail is the default.
+
+* SMTP: the selected SMTP operator receives sender and recipient addresses, subject, and message content when mail is sent. Review your operator's terms and privacy policy.
+* Mailgun: when selected for email, receives sender/recipient addresses, subject, message content including personalized names and unsubscribe URL, and API authentication. Terms: https://www.mailgun.com/legal/terms/ — Privacy: https://www.mailgun.com/legal/privacy-policy/
+* SendGrid: when selected for email, receives sender/recipient addresses, subject, message content including personalized names and unsubscribe URL, and API authentication. Terms: https://www.twilio.com/en-us/legal/tos — Privacy: https://www.twilio.com/en-us/legal/privacy
+* Short.io: when enabled and an administrator generates or refreshes a short link or QR code, receives the public petition URL/title, configured domain, link identifiers, and API authentication. Signer details are not sent. Short-link clicks are subject to the service's settings. Public renders use stored links without remote refreshes. Terms: https://short.io/terms/ — Privacy: https://short.io/privacy
+
+== Development ==
+
+Readable JavaScript and SCSS source are included. Rebuild compressed CSS using `npm ci` followed by `npm run build` in a source checkout. See README.md for dependencies, test/database setup, and verification commands.
 
 == Changelog ==
+
+= 0.2.0 =
+* Atomic submission limits, scoped nonces, private duplicate responses, robust validation, and no raw IP storage for new signatures.
+* Consent-based newsletter queue with bounded batches, progress, pause/resume/cancel, and interrupted-job recovery.
+* Confirmed unsubscribe, WordPress personal-data export/erasure, privacy suggestions, and service disclosures; legacy signatures preserved and excluded from newsletters.
+* Protected petition access, recursive-embed guard, unique IDs, accessible color/focus feedback and admin controls, safe CSV exports, and improved social metadata.
+* WordPress 6.3 minimum, updated translations, reproducible build/standards tooling, and security/privacy/queue regression coverage.
+
 
 = 0.1.0 =
 * Initial release: petitions, a Gutenberg block (jtc/petition), signature form with server-side validation and bot mitigation, share tools, QR codes, Short.io integration, newsletters, email providers, appearance system, help & quick start docs.

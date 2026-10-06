@@ -16,10 +16,10 @@
 
 	<rule ref="WordPress.WP.I18n">
 		<properties>
-			<property name="text_domain" type="array" value="join-the-cause"/>
+			<property name="text_domain" type="array"><element value="join-the-cause"/></property>
 		</properties>
 	</rule>
 
-	<config name="minimum_supported_wp_version" value="6.0"/>
+	<config name="minimum_supported_wp_version" value="6.3"/>
 	<config name="testVersion" value="8.0-"/>
 </ruleset>

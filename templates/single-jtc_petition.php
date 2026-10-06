@@ -1,4 +1,6 @@
 <?php
+// phpcs:ignoreFile WordPress.Files.FileName.NotHyphenatedLowercase -- Required WordPress block/template filename convention.
+
 /**
  * Single petition page template.
  *

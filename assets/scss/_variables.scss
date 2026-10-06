@@ -20,8 +20,8 @@ $jtc-bg:            var(--jtc-surface, #ffffff);
 $jtc-bg-alt:        var(--jtc-surface-alt, #f7f7f7);
 $jtc-page-bg:       var(--jtc-page-bg, transparent);
 $jtc-input-bg:      var(--jtc-input-bg, var(--jtc-surface, #ffffff));
-$jtc-error-color:   #c0392b;
-$jtc-success-color: #1e7e34;
+$jtc-error-color:   var(--jtc-error, #a51f16);
+$jtc-success-color: var(--jtc-success, #155b28);
 
 // Layout (radius/shadow/panel width are style options — PHP emits the vars)
 $jtc-panel-width:   var(--jtc-panel-width, 380px);
@@ -47,4 +47,4 @@ $jtc-bp-mobile:  768px;
 $jtc-bp-tablet:  1024px;
 
 // Focus ring (WCAG 2.1 AA)
-$jtc-focus-ring: 0 0 0 3px var(--jtc-primary, #2d6a2d);
+$jtc-focus-ring: 0 0 0 3px var(--jtc-link, #2d6a2d);

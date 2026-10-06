@@ -4,6 +4,8 @@
 .gitignore
 .DS_Store
 node_modules
+vendor
+bin
 package.json
 package-lock.json
 composer.json
@@ -11,5 +13,5 @@ composer.lock
 phpunit.xml.dist
 phpcs.xml.dist
 tests
-assets/scss
 .distignore
+.phpunit.result.cache

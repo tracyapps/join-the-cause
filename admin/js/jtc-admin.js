@@ -371,12 +371,13 @@ jQuery( function ( $ ) {
 		win.document.close();
 	} );
 
+	(function initializeFieldBuilder() {
 	// ── Form Field Builder (Petition edit screen) ─────────────────────────
 
 	var $body   = $( '#jtc-fields-body' );
 	var $hidden = $( '#jtc_form_fields_data' );
 
-	if ( ! $body.length ) return; // not on petition edit screen
+	if ( ! $body.length ) return; // This scoped initializer only owns the petition field builder.
 
 	// Generate a simple UUID-ish ID for new fields.
 	function uid() {
@@ -511,4 +512,80 @@ jQuery( function ( $ ) {
 	} );
 
 	syncFieldData();
+	})();
+
+	// Advance and report one bounded batch at a time. Each row owns its request.
+	$( '[data-newsletter-id]' ).each( function () {
+		var $row = $( this );
+		var busy = false;
+		function refresh( control ) {
+			if ( busy ) return;
+			var status = $row.attr( 'data-status' );
+			if ( ! control && [ 'queued', 'sending', 'paused', 'preparing', 'recovering' ].indexOf( status ) < 0 ) return;
+			busy = true;
+			$row.find( '.jtc-nl-control' ).prop( 'disabled', true );
+			$.post( jtcAdmin.ajaxUrl, {
+				action: control ? 'jtc_newsletter_control' : 'jtc_newsletter_progress',
+				nonce: jtcAdmin.newsletterNonce,
+				newsletter_id: $row.attr( 'data-newsletter-id' ),
+				control: control || ''
+			} ).done( function ( response ) {
+				if ( ! response.success ) return;
+				var data = response.data;
+				$row.attr( 'data-status', data.status );
+				$row.find( '.jtc-status' ).text( t( 'newsletter' + data.status.charAt( 0 ).toUpperCase() + data.status.slice( 1 ) ) );
+				$row.find( '.jtc-nl-progress' ).attr( 'max', Math.max( 1, data.total ) ).val( data.processed );
+				var $label = $row.find( '.jtc-nl-progress-label' );
+				if ( $label.text() !== data.label ) $label.text( data.label );
+			} ).fail( function () {
+				$row.find( '.jtc-nl-progress-label' ).text( t( 'newsletterError' ) );
+			} ).always( function () {
+				busy = false;
+				var status = $row.attr( 'data-status' );
+				$row.find( '[data-control="pause"]' ).prop( 'disabled', status !== 'queued' && status !== 'sending' );
+				$row.find( '[data-control="resume"]' ).prop( 'disabled', status !== 'paused' );
+				$row.find( '[data-control="cancel"]' ).prop( 'disabled', [ 'queued', 'sending', 'paused', 'preparing', 'recovering' ].indexOf( status ) < 0 );
+				if ( [ 'queued', 'sending', 'paused', 'preparing', 'recovering' ].indexOf( status ) >= 0 ) window.setTimeout( function () { refresh(); }, 5000 );
+			} );
+		}
+		$row.on( 'click', '.jtc-nl-control', function () { refresh( $( this ).attr( 'data-control' ) ); } );
+		refresh();
+	} );
+
+	// TinyMCE 4 labels its wrapper instead of the nested native button.
+	// Keep the actual button as the sole interactive control and transfer its
+	// translated name/state. Formatting and keyboard activation still bubble
+	// to TinyMCE's existing handlers.
+	function repairNewsletterEditor( editor ) {
+		if ( ! editor || editor.id !== 'jtc-nl-content' ) return;
+		var container = editor.getContainer();
+		if ( ! container || container.jtcA11yObserver ) return;
+		function normalizeToolbar() {
+			$( container ).find( '.mce-btn' ).each( function () {
+				var $wrapper = $( this );
+				var $button = $wrapper.children( 'button' );
+				if ( ! $button.length ) return;
+				[ 'aria-label', 'aria-pressed', 'aria-haspopup', 'aria-expanded', 'aria-controls' ].forEach( function ( attribute ) {
+					var value = $wrapper.attr( attribute );
+					if ( value !== undefined ) {
+						if ( $button.attr( attribute ) !== value ) $button.attr( attribute, value );
+						$wrapper.removeAttr( attribute );
+					}
+				} );
+				if ( $wrapper.attr( 'role' ) === 'button' ) $wrapper.removeAttr( 'role' );
+				if ( $wrapper.attr( 'tabindex' ) !== undefined ) $wrapper.removeAttr( 'tabindex' );
+				if ( $button.attr( 'role' ) === 'presentation' || $button.attr( 'role' ) === 'none' ) $button.removeAttr( 'role' );
+				if ( $button.attr( 'tabindex' ) !== '0' ) $button.attr( 'tabindex', '0' );
+			} );
+		}
+		normalizeToolbar();
+		if ( window.MutationObserver ) {
+			container.jtcA11yObserver = new MutationObserver( normalizeToolbar );
+			container.jtcA11yObserver.observe( container, { subtree: true, childList: true, attributes: true, attributeFilter: [ 'role', 'tabindex', 'aria-label', 'aria-pressed', 'aria-haspopup', 'aria-expanded', 'aria-controls' ] } );
+			editor.on( 'remove', function () { container.jtcA11yObserver.disconnect(); } );
+		}
+	}
+	$( document ).on( 'tinymce-editor-init', function ( event, editor ) { repairNewsletterEditor( editor ); } );
+	if ( window.tinymce ) repairNewsletterEditor( window.tinymce.get( 'jtc-nl-content' ) );
+
 } );

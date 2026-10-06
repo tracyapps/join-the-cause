@@ -9,7 +9,9 @@
  * @package JoinTheCause
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
 $presets        = jtc_get_preset_themes();
 $current_mode   = get_option( 'jtc_color_mode', 'preset' );
@@ -30,13 +32,13 @@ $style = jtc_get_style_options();
 			<th scope="row"><?php esc_html_e( 'Colour mode', 'join-the-cause' ); ?></th>
 			<td>
 				<?php
-				$modes = [
+				$modes = array(
 					'preset' => __( 'Preset theme', 'join-the-cause' ),
 					'custom' => __( 'Custom colours (colour picker)', 'join-the-cause' ),
 					'none'   => __( 'None (use theme styles only)', 'join-the-cause' ),
-				];
+				);
 				foreach ( $modes as $val => $lbl ) :
-				?>
+					?>
 				<label style="display:block;margin-bottom:6px;">
 					<input type="radio" name="jtc_color_mode" value="<?php echo esc_attr( $val ); ?>"
 						<?php checked( $current_mode, $val ); ?> class="jtc-mode-radio">
@@ -51,15 +53,16 @@ $style = jtc_get_style_options();
 			<th scope="row"><label><?php esc_html_e( 'Choose preset', 'join-the-cause' ); ?></label></th>
 			<td>
 				<div class="jtc-preset-swatches" role="group" aria-label="<?php esc_attr_e( 'Colour preset options', 'join-the-cause' ); ?>">
-					<?php foreach ( $presets as $slug => $colors ) :
-						$label = $colors['label'] ?? ucwords( str_replace( [ '-', '_' ], ' ', $slug ) );
-					?>
+					<?php
+					foreach ( $presets as $slug => $colors ) :
+						$label = $colors['label'] ?? ucwords( str_replace( array( '-', '_' ), ' ', $slug ) );
+						?>
 					<label class="jtc-swatch-label" title="<?php echo esc_attr( $label ); ?>">
 						<input type="radio" name="jtc_preset_theme" value="<?php echo esc_attr( $slug ); ?>"
 							<?php checked( $current_preset, $slug ); ?>>
 						<span class="jtc-swatch"
 							style="background:linear-gradient(135deg, <?php echo esc_attr( $colors['hero_from'] ?? $colors['primary'] ); ?>, <?php echo esc_attr( $colors['hero_to'] ?? $colors['primary_dark'] ); ?>);"
-							aria-label="<?php echo esc_attr( $label ); ?>">
+							aria-hidden="true">
 						</span>
 						<span class="jtc-swatch-name"><?php echo esc_html( $label ); ?></span>
 					</label>
@@ -74,20 +77,20 @@ $style = jtc_get_style_options();
 			<td>
 				<div class="jtc-color-pickers">
 					<?php
-					$pickers = [
-						'jtc_custom_primary'     => [ __( 'Primary colour',      'join-the-cause' ), '#2d6a2d' ],
-						'jtc_custom_secondary'   => [ __( 'Dark variant',        'join-the-cause' ), '#1a3d1a' ],
-						'jtc_custom_accent'      => [ __( 'Light accent / bg',   'join-the-cause' ), '#f0faf0' ],
-						'jtc_custom_hero_from'   => [ __( 'Hero gradient start', 'join-the-cause' ), '#245e2b' ],
-						'jtc_custom_hero_to'     => [ __( 'Hero gradient end',   'join-the-cause' ), '#4f8d33' ],
-						'jtc_custom_page_bg'     => [ __( 'Page background',     'join-the-cause' ), '#f6f8f4' ],
-						'jtc_custom_surface'     => [ __( 'Content background',  'join-the-cause' ), '#ffffff' ],
-						'jtc_custom_surface_alt' => [ __( 'Accent background',   'join-the-cause' ), '#f3f7f0' ],
-						'jtc_custom_border'      => [ __( 'Borders',             'join-the-cause' ), '#d8e2d2' ],
-					];
+					$pickers = array(
+						'jtc_custom_primary'     => array( __( 'Primary colour', 'join-the-cause' ), '#2d6a2d' ),
+						'jtc_custom_secondary'   => array( __( 'Dark variant', 'join-the-cause' ), '#1a3d1a' ),
+						'jtc_custom_accent'      => array( __( 'Light accent / bg', 'join-the-cause' ), '#f0faf0' ),
+						'jtc_custom_hero_from'   => array( __( 'Hero gradient start', 'join-the-cause' ), '#245e2b' ),
+						'jtc_custom_hero_to'     => array( __( 'Hero gradient end', 'join-the-cause' ), '#4f8d33' ),
+						'jtc_custom_page_bg'     => array( __( 'Page background', 'join-the-cause' ), '#f6f8f4' ),
+						'jtc_custom_surface'     => array( __( 'Content background', 'join-the-cause' ), '#ffffff' ),
+						'jtc_custom_surface_alt' => array( __( 'Accent background', 'join-the-cause' ), '#f3f7f0' ),
+						'jtc_custom_border'      => array( __( 'Borders', 'join-the-cause' ), '#d8e2d2' ),
+					);
 					foreach ( $pickers as $key => [$label, $default] ) :
 						$val = get_option( $key, $default );
-					?>
+						?>
 					<div class="jtc-color-picker-row">
 						<label for="<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></label>
 						<input
@@ -114,7 +117,14 @@ $style = jtc_get_style_options();
 			<th scope="row"><label for="jtc_style_radius"><?php esc_html_e( 'Corner radius', 'join-the-cause' ); ?></label></th>
 			<td>
 				<select id="jtc_style_radius" name="jtc_style[radius]">
-					<?php foreach ( [ 'compact' => __( 'Compact (4px)', 'join-the-cause' ), 'default' => __( 'Default (8px)', 'join-the-cause' ), 'round' => __( 'Round (14px)', 'join-the-cause' ), 'pill' => __( 'Pill', 'join-the-cause' ) ] as $v => $l ) : ?>
+					<?php
+					foreach ( array(
+						'compact' => __( 'Compact (4px)', 'join-the-cause' ),
+						'default' => __( 'Default (8px)', 'join-the-cause' ),
+						'round'   => __( 'Round (14px)', 'join-the-cause' ),
+						'pill'    => __( 'Pill', 'join-the-cause' ),
+					) as $v => $l ) :
+						?>
 					<option value="<?php echo esc_attr( $v ); ?>" <?php selected( $style['radius'], $v ); ?>><?php echo esc_html( $l ); ?></option>
 					<?php endforeach; ?>
 				</select>
@@ -124,7 +134,14 @@ $style = jtc_get_style_options();
 			<th scope="row"><label for="jtc_style_shadow"><?php esc_html_e( 'Shadow level', 'join-the-cause' ); ?></label></th>
 			<td>
 				<select id="jtc_style_shadow" name="jtc_style[shadow]">
-					<?php foreach ( [ 'none' => __( 'None', 'join-the-cause' ), 'subtle' => __( 'Subtle', 'join-the-cause' ), 'default' => __( 'Default', 'join-the-cause' ), 'strong' => __( 'Strong', 'join-the-cause' ) ] as $v => $l ) : ?>
+					<?php
+					foreach ( array(
+						'none'    => __( 'None', 'join-the-cause' ),
+						'subtle'  => __( 'Subtle', 'join-the-cause' ),
+						'default' => __( 'Default', 'join-the-cause' ),
+						'strong'  => __( 'Strong', 'join-the-cause' ),
+					) as $v => $l ) :
+						?>
 					<option value="<?php echo esc_attr( $v ); ?>" <?php selected( $style['shadow'], $v ); ?>><?php echo esc_html( $l ); ?></option>
 					<?php endforeach; ?>
 				</select>
@@ -159,7 +176,7 @@ $style = jtc_get_style_options();
 			<th scope="row"><label for="jtc_style_font_scale"><?php esc_html_e( 'Text size', 'join-the-cause' ); ?></label></th>
 			<td>
 				<select id="jtc_style_font_scale" name="jtc_style[font_scale]">
-					<?php foreach ( [ 90, 95, 100, 105, 110 ] as $pct ) : ?>
+					<?php foreach ( array( 90, 95, 100, 105, 110 ) as $pct ) : ?>
 					<option value="<?php echo esc_attr( $pct ); ?>" <?php selected( (int) $style['font_scale'], $pct ); ?>><?php echo esc_html( $pct . '%' ); ?></option>
 					<?php endforeach; ?>
 				</select>
@@ -169,7 +186,7 @@ $style = jtc_get_style_options();
 			<th scope="row"><label for="jtc_style_panel_width"><?php esc_html_e( 'Sign panel width', 'join-the-cause' ); ?></label></th>
 			<td>
 				<select id="jtc_style_panel_width" name="jtc_style[panel_width]">
-					<?php foreach ( [ 340, 380, 420 ] as $w ) : ?>
+					<?php foreach ( array( 340, 380, 420 ) as $w ) : ?>
 					<option value="<?php echo esc_attr( $w ); ?>" <?php selected( (int) $style['panel_width'], $w ); ?>><?php echo esc_html( $w . 'px' ); ?></option>
 					<?php endforeach; ?>
 				</select>
@@ -180,7 +197,7 @@ $style = jtc_get_style_options();
 			<td>
 				<select id="jtc_style_content_max" name="jtc_style[content_max]">
 					<option value="none" <?php selected( $style['content_max'], 'none' ); ?>><?php esc_html_e( 'Full width (theme container)', 'join-the-cause' ); ?></option>
-					<?php foreach ( [ '720px', '960px', '1140px', '1320px' ] as $w ) : ?>
+					<?php foreach ( array( '720px', '960px', '1140px', '1320px' ) as $w ) : ?>
 					<option value="<?php echo esc_attr( $w ); ?>" <?php selected( $style['content_max'], $w ); ?>><?php echo esc_html( $w ); ?></option>
 					<?php endforeach; ?>
 				</select>
